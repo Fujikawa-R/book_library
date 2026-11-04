@@ -38,8 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'library.apps.LibraryConfig',
-    'admin.apps.LibraryConfig',
-    'rental.apps.LibraryConfig'
+    'admin.apps.AdminConfig',
+    'rental.apps.RentalConfig',
+    'phone.apps.PhoneConfig',
 ]
 
 MIDDLEWARE = [
