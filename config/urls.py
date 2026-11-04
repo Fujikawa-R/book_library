@@ -20,11 +20,11 @@ from django.views.generic import RedirectView
 
 urlpatterns = [
     path("admin/", admin.site.urls),  # Django標準の管理サイト
-    # path("accounts/", include("accounts.urls")),  # signup など自作分
-    # path("accounts/", include("django.contrib.auth.urls")),  # login / logout
+    path("accounts/", include("accounts.urls")),  # signup など
+    path("accounts/", include("django.contrib.auth.urls")),  # login / logout
     path("phone/", include("phone.urls")),
     path("rental/", include("rental.urls")),
     path("manager/", include("manager.urls")),
-    # path("", RedirectView.as_view(pattern_name="phone:mypage"), name="index"),
+    path("", RedirectView.as_view(pattern_name="phone:mypage"), name="index"),
 ]
 
