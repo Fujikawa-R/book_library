@@ -1,0 +1,79 @@
+<style>
+    body {
+        margin: 0;
+    }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 4rem;
+    background: #b9b4b2;
+    color: #000;
+  }
+
+  .app-header__title {
+    font-size: 1.25rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .app-header__menu {
+    position: relative;
+    width: 240px;
+  }
+
+  .app-header__select {
+    width: 100%;
+    height: 36px;
+    padding: 0 2.5rem 0 1.5rem;
+    border: none;
+    background: #fff;
+    font-size: 1.1rem;
+    color: #000;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  /* 右側の青い ▼ アイコン */
+  .app-header__menu::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    width: 20px;
+    height: 20px;
+    transform: translateY(-50%);
+    background: #3b7dbf;
+    clip-path: polygon(20% 35%, 80% 35%, 50% 70%);
+    pointer-events: none;
+  }
+</style>
+
+<header class="app-header">
+  <a class="app-header__title" href="{% url 'manager:rental_list' %}">yom yom</a>
+
+<div class="app-header__menu">
+  {% url 'manager:rental_list' as rental_url %}
+  {% url 'manager:book_list' as book_url %}
+  {% url 'manager:user_list' as user_url %}
+  {% url 'manager:department_list' as department_url %}
+  {% url 'manager:report_list' as report_url %}
+  {% url 'manager:notice_list' as notice_url %}
+  {% url 'manager:user_notice_list' as user_notice_url %}
+  {% url 'manager:user_notice_text_list' as user_notice_text_url %}
+
+  <select class="app-header__select" onchange="if (this.value) location.href = this.value;">
+    <option value="{{ rental_url }}" {% if rental_url in request.path %}selected{% endif %}>貸出状況管理</option>
+    <option value="{{ book_url }}" {% if book_url in request.path %}selected{% endif %}>図書管理</option>
+    <option value="{{ user_url }}" {% if user_url in request.path %}selected{% endif %}>ユーザー管理</option>
+    <option value="{{ department_url }}" {% if department_url in request.path %}selected{% endif %}>学科管理</option>
+    <option value="{{ report_url }}" {% if report_url in request.path %}selected{% endif %}>通報管理</option>
+    <option value="{{ notice_url }}" {% if notice_url in request.path %}selected{% endif %}>通知管理</option>
+    <option value="{{ user_notice_url }}" {% if user_notice_url in request.path %}selected{% endif %}>定期通知管理</option>
+  </select>
+</div>
+</header>
