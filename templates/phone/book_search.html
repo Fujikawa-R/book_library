@@ -1,8 +1,129 @@
+
 {% extends "phone_base.html" %}
+{% load static %}
 
 {% block title %}図書検索{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/phone/book_search.css' %}">
+{% endblock %}
+
 {% block content %}
 
-{% endblock  %}
+<main class="book-search">
+    <div class="search-content">
 
+        <!-- 検索フォーム -->
+        <form class="search-form" method="get">
+            <div class="search-input-wrapper">
+                <svg viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m20 20-4-4"></path>
+                </svg>
+
+                <input
+                    type="search"
+                    name="q"
+                    placeholder="タイトル・著者名で検索"
+                    value="{{ query }}"
+                >
+            </div>
+
+            <button type="submit" class="search-submit">
+                検索
+            </button>
+        </form>
+
+        <!-- ISBN検索 -->
+        <button type="button" class="isbn-button">
+            <span>▣</span>
+            ISBNコードで検索
+        </button>
+
+        <!-- 並び替え -->
+        <div class="filter-area">
+            <a href="?q={{ query|urlencode }}&sort=rating"
+               class="filter-btn {% if sort == 'rating' %}active{% endif %}">
+                評価順
+            </a>
+
+            <a href="?q={{ query|urlencode }}&sort=stock"
+               class="filter-btn {% if sort == 'stock' %}active{% endif %}">
+                件数順
+            </a>
+
+            <a href="?q={{ query|urlencode }}&sort=tag"
+               class="filter-btn {% if sort == 'tag' %}active{% endif %}">
+                タグ
+            </a>
+        </div>
+
+        <!-- 検索結果 -->
+        <div class="result-header">
+            <h2>検索結果</h2>
+            <span>{{ books|length }}冊の本</span>
+        </div>
+
+        <section class="book-list">
+
+            {% for book in books %}
+
+            <article class="book-card">
+
+                <!-- 表紙 -->
+                <div class="book-cover">
+                    <span>📖</span>
+                    <small>BOOK</small>
+                </div>
+
+                <!-- 書籍情報 -->
+                <div class="book-info">
+
+                    <h3>{{ book.title }}</h3>
+
+                    <p class="book-description">
+                        {{ book.description|default:"説明なし" }}
+                    </p>
+
+                    <!-- 評価 -->
+                    <div class="book-rating">
+                        <span class="star">★</span>
+                        <span>{{ book.rating|default_if_none:"未評価" }}</span>
+                    </div>
+
+                    <!-- 在庫 -->
+                    <div class="book-bottom">
+
+                        {% if book.stock > 0 %}
+                            <span class="stock available">
+                                在庫あり {{ book.stock }}冊
+                            </span>
+                        {% else %}
+                            <span class="stock unavailable">
+                                貸出中
+                            </span>
+                        {% endif %}
+
+                        <span class="arrow">›</span>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+            {% empty %}
+
+            <div class="no-results">
+                <p>該当する本が見つかりませんでした。</p>
+            </div>
+
+            {% endfor %}
+
+        </section>
+
+    </div>
+</main>
+
+{% endblock %}
