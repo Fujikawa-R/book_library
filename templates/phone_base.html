@@ -6,13 +6,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{% static "css/phone/phone_base.css" %}">
-    <title>yom yom</title>
+    <title>yom yom | {% block title %}{% endblock %}</title>
 </head>
 <body>
 <footer class="phone-footer">
 
         <a href="{% url "phone:book_search" %}"
-           class="footer-item {% if request.resolver_match.url_name == 'search' %}active{% endif %}">
+           class="footer-item {% if request.resolver_match.url_name == 'book_search' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="7"></circle>
@@ -32,7 +32,7 @@
         </a>
 
         <a href="{% url "phone:setting" %}"
-           class="footer-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
+           class="footer-item {% if request.resolver_match.url_name == 'setting' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
