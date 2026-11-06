@@ -7,14 +7,30 @@ from django.shortcuts import redirect, render
 def mypage(request):
     return render(request, "phone/mypage.html")
 
-
 def setting(request):
-    return render(request, "phone/setting.html")
+    student = {
+        "student_id": "4253111",
+        "email": "example@morijyobi.ac.jp",
+        "department": "情報システム科",
+    }
+
+    departments = [
+        "情報システム科",
+        "高度情報工学科",
+        "ネットワークセキュリティ科",
+        "ゲームクリエイター科",
+    ]
+
+    return render(request, "phone/setting.html", {
+        "student": student,
+        "departments": departments,
+    })
 
 
-
-from django.shortcuts import render
-
+# student.student_id	学籍番号
+# student.email	        メールアドレス
+# student.department	学科
+# departments	        学科の選択肢
 
 def book_search(request):
     # 仮の書籍データ
@@ -24,7 +40,7 @@ def book_search(request):
             "title": "Java基礎",
             "description": "プログラミング入門",
             "rating": 4.4,
-            "stock": 5,
+            "stock": 2,
             "tags": ["Java", "プログラミング"],
         },
         {
