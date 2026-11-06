@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'lender.apps.LenderConfig',
     'phone.apps.PhoneConfig',
     'accounts.apps.AccountsConfig',
+    'library.apps.LibraryConfig',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
