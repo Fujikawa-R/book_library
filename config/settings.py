@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'phone.apps.PhoneConfig',
     'accounts.apps.AccountsConfig',
     'library.apps.LibraryConfig',
+    'django_bootstrap5',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
