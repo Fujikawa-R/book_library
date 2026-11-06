@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'manager.apps.ManagerConfig',
     'rental.apps.RentalConfig',
     'phone.apps.PhoneConfig',
+    'django_bootstrap5',
 ]
 
 MIDDLEWARE = [
