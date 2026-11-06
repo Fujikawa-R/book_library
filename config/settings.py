@@ -38,9 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'manager.apps.ManagerConfig',
-    'rental.apps.RentalConfig',
+    'lender.apps.LenderConfig',
     'phone.apps.PhoneConfig',
     'accounts.apps.AccountsConfig',
+    'library.apps.LibraryConfig',
     'django_bootstrap5',
 ]
 
