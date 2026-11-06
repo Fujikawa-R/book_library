@@ -23,7 +23,7 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),  # signup など
     path("accounts/", include("django.contrib.auth.urls")),  # login / logout
     path("phone/", include("phone.urls")),
-    path("rental/", include("rental.urls")),
+    path("lender/", include("lender.urls")),
     path("manager/", include("manager.urls")),
     path("", RedirectView.as_view(pattern_name="phone:mypage"), name="index"),
 ]
