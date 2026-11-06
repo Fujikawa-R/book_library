@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rental.apps.RentalConfig',
     'phone.apps.PhoneConfig',
     'accounts.apps.AccountsConfig',
+    'django_bootstrap5',
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
