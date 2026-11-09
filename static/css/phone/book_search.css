@@ -139,7 +139,7 @@
     cursor: pointer;
 }
 
-/* 選択中 */
+/* 選択中のフィルター */
 .filter-btn.active {
     background-color: #2563eb;
     border-color: #2563eb;
@@ -147,6 +147,26 @@
     font-weight: 600;
 }
 
+/* 検索結果 */
+.result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.result-header h2 {
+    font-size: 17px;
+    color: #1e293b;
+    margin: 0;
+}
+
+.result-header span {
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* 検索結果なし */
 .no-results {
     text-align: center;
     padding: 40px 15px;
@@ -154,30 +174,30 @@
     font-size: 14px;
 }
 
-/* 検索結果 */
-.result-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-}
-
-.result-header h2 {
-    font-size: 17px;
-    color: #1e293b;
-    margin: 0;
-}
-
-.result-header span {
-    font-size: 12px;
-    color: #64748b;
-}
-
 /* 書籍一覧 */
 .book-list {
     display: flex;
     flex-direction: column;
     gap: 14px;
+}
+
+/* 書籍カードのリンク */
+.book-card-link,
+.book-card-link:link,
+.book-card-link:visited,
+.book-card-link:hover,
+.book-card-link:active {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 16px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* リンク内の文字装飾 */
+.book-card-link * {
+    text-decoration: none;
 }
 
 /* 書籍カード */
@@ -190,305 +210,29 @@
     border: 1px solid #e2e8f0;
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-    transition: 0.2s;
+    transition:
+        transform 0.2s,
+        border-color 0.2s,
+        box-shadow 0.2s;
 }
 
-.book-card:active {
+/* ホバー時 */
+@media (hover: hover) {
+    .book-card-link:hover .book-card {
+        border-color: #93c5fd;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+    }
+}
+
+/* クリック時 */
+.book-card-link:active .book-card {
     transform: scale(0.98);
 }
 
-/* 表紙 */
-.book-cover {
-    width: 70px;
-    height: 90px;
-    flex-shrink: 0;
-    background: #dbeafe;
-    border-radius: 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 6px;
-    color: #2563eb;
-}
-
-.book-cover span {
-    font-size: 28px;
-}
-
-.book-cover small {
-    font-size: 10px;
-    font-weight: 600;
-}
-
-/* 書籍情報 */
-.book-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.book-info h3 {
-    margin: 0 0 6px;
-    font-size: 17px;
-    font-weight: 700;
-    color: #0f172a;
-    overflow-wrap: anywhere;
-}
-
-.book-description {
-    font-size: 12px;
-    color: #64748b;
-    margin: 0 0 10px;
-}
-
-/* 評価 */
-.book-rating {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    color: #334155;
-    font-weight: 600;
-}
-
-.star {
-    color: #eab308;
-    font-size: 20px;
-}
-
-/* 在庫 */
-.book-bottom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 10px;
-}
-
-.stock {
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.available {
-    color: #15803d;
-}
-
-.unavailable {
-    color: #b45309;
-}
-
-.arrow {
-    font-size: 25px;
-    color: #94a3b8;
-    line-height: 1;
-}
-
-/* 小さいスマホ */
-@media (max-width: 360px) {
-    .search-content {
-        padding: 16px 12px;
-    }
-
-    .book-card {
-        padding: 12px;
-        gap: 10px;
-    }
-
-    .book-cover {
-        width: 60px;
-        height: 80px;
-    }
-
-    .book-info h3 {
-        font-size: 15px;
-    }
-}
-
-/* 全体 */
-.book-search {
-    min-height: 100vh;
-    background-color: #f8fafc;
-    padding-bottom: 100px;
-    font-family: "Helvetica Neue", Arial, sans-serif;
-    box-sizing: border-box;
-}
-
-/* ヘッダー */
-.search-header {
-    background: #2563eb;
-    color: white;
-    padding: 24px 20px 30px;
-    border-radius: 0 0 24px 24px;
-}
-
-.header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.app-name {
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.header-icon {
-    font-size: 24px;
-}
-
-.search-header h1 {
-    font-size: 26px;
-    margin: 0 0 8px;
-    font-weight: 700;
-}
-
-.search-header p {
-    font-size: 13px;
-    color: #dbeafe;
-    margin: 0;
-}
-
-/* コンテンツ */
-.search-content {
-    padding: 20px 16px;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-/* 検索フォーム */
-.search-form {
-    display: flex;
-    gap: 8px;
-}
-
-.search-input-wrapper {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-    gap: 10px;
-    padding: 0 12px;
-    background: white;
-    border: 1px solid #dbe3ef;
-    border-radius: 12px;
-    height: 48px;
-}
-
-.search-input-wrapper svg {
-    width: 20px;
-    height: 20px;
-    color: #64748b;
-    flex-shrink: 0;
-}
-
-.search-input-wrapper input {
-    width: 100%;
-    min-width: 0;
-    border: none;
-    outline: none;
-    background: transparent;
-    font-size: 14px;
-}
-
-.search-input-wrapper:focus-within {
-    border-color: #2563eb;
-}
-
-.search-submit {
-    border: none;
-    background: #2563eb;
-    color: white;
-    padding: 0 16px;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-/* ISBN検索 */
-.isbn-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    margin-top: 12px;
-    padding: 12px;
-    background: #dbeafe;
-    color: #2563eb;
-    border: none;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-/* フィルター */
-.filter-area {
-    display: flex;
-    gap: 8px;
-    margin: 22px 0;
-}
-
-.filter-btn {
-    padding: 9px 18px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    color: #64748b;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.filter-btn.active {
-    background: #2563eb;
-    border-color: #2563eb;
-    color: white;
-    font-weight: 600;
-}
-
-/* 検索結果 */
-.result-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
-}
-
-.result-header h2 {
-    font-size: 17px;
-    color: #1e293b;
-    margin: 0;
-}
-
-.result-header span {
-    font-size: 12px;
-    color: #64748b;
-}
-
-/* 書籍一覧 */
-.book-list {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-/* 書籍カード */
-.book-card {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 16px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-    transition: 0.2s;
-}
-
-.book-card:active {
-    transform: scale(0.98);
+/* キーボード操作時 */
+.book-card-link:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
 }
 
 /* 表紙 */

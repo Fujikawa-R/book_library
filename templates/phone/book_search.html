@@ -65,53 +65,70 @@
             <span>{{ books|length }}冊の本</span>
         </div>
 
+        <!-- 書籍一覧 -->
         <section class="book-list">
 
             {% for book in books %}
 
-            <article class="book-card">
+            <!-- ISBNがある場合はリンクを設定 -->
+            {% if book.isbn %}
+                <a href="{% url 'phone:book_detail' book.isbn %}"
+                   class="book-card-link">
+            {% else %}
+                <div class="book-card-link no-link">
+            {% endif %}
 
-                <!-- 表紙 -->
-                <div class="book-cover">
-                    <span>📖</span>
-                    <small>BOOK</small>
-                </div>
+                <!-- 書籍カード -->
+                <article class="book-card">
 
-                <!-- 書籍情報 -->
-                <div class="book-info">
-
-                    <h3>{{ book.title }}</h3>
-
-                    <p class="book-description">
-                        {{ book.description|default:"説明なし" }}
-                    </p>
-
-                    <!-- 評価 -->
-                    <div class="book-rating">
-                        <span class="star">★</span>
-                        <span>{{ book.rating|default_if_none:"未評価" }}</span>
+                    <!-- 表紙 -->
+                    <div class="book-cover">
+                        <span>📖</span>
+                        <small>BOOK</small>
                     </div>
 
-                    <!-- 在庫 -->
-                    <div class="book-bottom">
+                    <!-- 書籍情報 -->
+                    <div class="book-info">
 
-                        {% if book.stock > 0 %}
-                            <span class="stock available">
-                                在庫あり {{ book.stock }}冊
-                            </span>
-                        {% else %}
-                            <span class="stock unavailable">
-                                貸出中
-                            </span>
-                        {% endif %}
+                        <h3>{{ book.title }}</h3>
 
-                        <span class="arrow">›</span>
+                        <p class="book-description">
+                            {{ book.description|default:"説明なし" }}
+                        </p>
+
+                        <!-- 評価 -->
+                        <div class="book-rating">
+                            <span class="star">★</span>
+                            <span>{{ book.rating|default_if_none:"未評価" }}</span>
+                        </div>
+
+                        <!-- 在庫 -->
+                        <div class="book-bottom">
+
+                            {% if book.stock > 0 %}
+                                <span class="stock available">
+                                    在庫あり {{ book.stock }}冊
+                                </span>
+                            {% else %}
+                                <span class="stock unavailable">
+                                    貸出中
+                                </span>
+                            {% endif %}
+
+                            <span class="arrow">›</span>
+
+                        </div>
 
                     </div>
 
-                </div>
+                </article>
 
-            </article>
+            <!-- 開始タグに合わせて閉じる -->
+            {% if book.isbn %}
+                </a>
+            {% else %}
+                </div>
+            {% endif %}
 
             {% empty %}
 
