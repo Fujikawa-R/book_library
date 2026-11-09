@@ -23,7 +23,7 @@ def standby(request):
     return render(request, "lender/await.html") 
 
 def isbn_scan(request, mode):
-    return render(request, "lender/isbn_typing.html", {   # テンプレートは実際のパスに合わせる
+    return render(request, "lender/isbn_scan.html", {   # テンプレートは実際のパスに合わせる
             "mode": mode,
             "page_title": SCAN_TITLES[mode],
         })
