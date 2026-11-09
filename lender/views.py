@@ -22,23 +22,17 @@ SCAN_TITLES = {
 def standby(request):
     return render(request, "lender/await.html") 
 
-def isbn_typing(request, mode):
+def isbn_scan(request, mode):
     return render(request, "lender/isbn_typing.html", {   # テンプレートは実際のパスに合わせる
             "mode": mode,
             "page_title": SCAN_TITLES[mode],
         })
+ 
+def qr_scan(request, mode):
+    return render(request, "lender/qr_scan.html", {"mode": mode})
 
 def user_auth(request):
     return render(request, "lender/user_auth.html")
-
-
-def user_auth_qr(request):
-    return render(request, "lender/user_auth_qr.html")
-
-
-def user_auth_typing(request):
-    return render(request, "lender/user_auth_typing.html")
-
 
 def finish(request):
     return render(request, "lender/finish.html")

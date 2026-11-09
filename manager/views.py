@@ -34,7 +34,7 @@ def rental_list(request):
 
 
 def rental_detail(request, loan_id):
-    return render(request, "manager/rental_detail.html", {"loan_id": loan_id})
+    return render(request, "manager/rental_detail.html", {"rental_id": loan_id})
 
 
 def report_list(request):

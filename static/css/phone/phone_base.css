@@ -87,3 +87,20 @@ main {
     outline-offset: 2px;
 }
 
+/* 書籍カードのリンク装飾を完全に削除 */
+.book-search .book-list a.book-card-link,
+.book-search .book-list a.book-card-link:link,
+.book-search .book-list a.book-card-link:visited,
+.book-search .book-list a.book-card-link:hover,
+.book-search .book-list a.book-card-link:active,
+.book-search .book-list a.book-card-link *,
+.book-search .book-list a.book-card-link *::before,
+.book-search .book-list a.book-card-link *::after {
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+}
+
+/* リンク自体の文字色を維持 */
+.book-search .book-list a.book-card-link {
+    color: inherit !important;
+}
