@@ -15,7 +15,7 @@ def isbn_scan(request, mode):
 
 
 def qr_scan(request, mode):
-    return render(request, "lender/isbn_scan.html", {"mode": mode})
+    return render(request, "lender/qr_scan.html", {"mode": mode})
 
 
 def user_auth(request):
