@@ -7,34 +7,22 @@ from django.views.decorators.http import require_POST
 
 
 def standby(request):
-    return render(request, "rental/await.html")
+    return render(request, "lender/await.html")
 
 
-def isbn_scan(request, mode):
-    return render(request, "rental/isbn_scan.html", {"mode": mode})
-
-
-def isbn_typing(request, mode):
-    return render(request, "rental/isbn_typing.html", {"mode": mode})
+def scan(request, mode):
+    return render(request, "lender/isbn_scan.html", {"mode": mode})
 
 
 def user_auth(request):
-    return render(request, "rental/user_auth.html")
-
-
-def user_auth_qr(request):
-    return render(request, "rental/user_auth_qr.html")
-
-
-def user_auth_typing(request):
-    return render(request, "rental/user_auth_typing.html")
+    return render(request, "lender/user_auth.html")
 
 
 def finish(request):
-    return render(request, "rental/finish.html")
+    return render(request, "lender/finish.html")
 
 
 @require_POST
 def cancel(request):
     # TODO: セッションの取引情報を破棄する
-    return redirect("rental:standby")
+    return redirect("lender:standby")
