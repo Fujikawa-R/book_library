@@ -1,0 +1,285 @@
+
+/* 全体 */
+.detail-page {
+    min-height: 100vh;
+    background-color: #f8fafc;
+    padding-bottom: 110px;
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    box-sizing: border-box;
+}
+
+.detail-page * {
+    box-sizing: border-box;
+}
+
+/* ヘッダー */
+.detail-header {
+    background-color: #2563eb;
+    color: white;
+    padding: 20px 16px;
+}
+
+.detail-header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+/* コンテンツ */
+.detail-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px 16px;
+}
+
+/* 書籍情報カード */
+.book-detail-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+/* 書籍情報 */
+.book-main {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+}
+
+.book-data {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.book-data-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.data-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.data-value {
+    font-size: 14px;
+    color: #0f172a;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+/* 書籍画像 */
+.book-image {
+    width: 115px;
+    min-height: 150px;
+    flex-shrink: 0;
+    background-color: #dbeafe;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #2563eb;
+    overflow: hidden;
+}
+
+.book-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.book-image span {
+    font-size: 36px;
+}
+
+.book-image small {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+/* 評価 */
+.book-rating {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.rating-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.rating-star {
+    font-size: 25px;
+    color: #eab308;
+}
+
+.rating-score {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* 口コミ全体 */
+.review-section {
+    margin-top: 26px;
+}
+
+.review-section h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 20px;
+}
+
+/* 口コミグループ */
+.review-group {
+    margin-bottom: 22px;
+}
+
+.review-group h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #334155;
+    margin: 0 0 10px;
+}
+
+/* 自分の口コミ */
+.my-review {
+    min-height: 100px;
+    padding: 16px;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #334155;
+}
+
+.my-review p {
+    margin: 0;
+    line-height: 1.7;
+}
+
+/* 編集ボタン */
+.review-edit-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background-color: #2563eb;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.review-edit-btn:hover {
+    background-color: #1d4ed8;
+}
+
+.review-edit-btn:active {
+    transform: scale(0.98);
+}
+
+/* その他の口コミ */
+.other-reviews {
+    min-height: 180px;
+    padding: 14px;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+/* 個別口コミ */
+.review-item {
+    padding: 12px 4px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.review-item:first-child {
+    padding-top: 0;
+}
+
+.review-item:last-child {
+    border-bottom: none;
+}
+
+.review-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.review-user {
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+}
+
+.review-stars {
+    font-size: 13px;
+    font-weight: 600;
+    color: #eab308;
+}
+
+.review-item p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #475569;
+    overflow-wrap: anywhere;
+}
+
+/* 口コミなし */
+.empty-review {
+    color: #94a3b8;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px 5px;
+}
+
+/* 小さいスマホ */
+@media (max-width: 360px) {
+    .detail-container {
+        padding: 16px 12px;
+    }
+
+    .book-detail-card {
+        padding: 12px;
+    }
+
+    .book-main {
+        gap: 10px;
+    }
+
+    .book-image {
+        width: 95px;
+        min-height: 130px;
+    }
+
+    .data-value {
+        font-size: 12px;
+    }
+
+    .review-section h2 {
+        font-size: 18px;
+    }
+}
