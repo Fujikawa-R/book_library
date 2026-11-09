@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if mode == 'return' %}返却完了{% else %}貸出完了{% endif %}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: #fff;
+      color: #000;
+    }
+
+    .finish {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .finish__message {
+      font-size: 1.5rem;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    .finish__note {
+      margin-top: 3rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="finish">
+    {% if mode == 'return' %}
+      <p class="finish__message">
+        返却が完了しました<br>
+        ご利用ありがとうございます
+      </p>
+    {% else %}
+      <p class="finish__message">
+        貸出が完了しました<br>
+        ご利用ありがとうございます
+      </p>
+    {% endif %}
+
+    <p class="finish__note">数秒後に待機画面に戻ります</p>
+  </main>
+
+  <script>
+    // 3秒後に待機画面へ戻る
+    setTimeout(function () {
+      location.href = "{% url 'rental:standby' %}";
+    }, 3000);
+  </script>
+</body>
+</html>

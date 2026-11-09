@@ -1,0 +1,399 @@
+
+{% extends "phone_base.html" %}
+{% load static %}
+
+{% block title %}設定{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/phone/settings.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<main class="setting-page">
+    <div class="setting-container">
+
+        <!-- 学籍番号 -->
+        <div class="student-header">
+            <div>
+                <p class="student-label">学籍番号</p>
+                <h1 id="student-id">{{ student.student_id }}</h1>
+            </div>
+            <div class="student-icon">👤</div>
+        </div>
+
+        <h2 class="setting-title">アカウント設定</h2>
+
+        <form method="post" id="setting-form" class="setting-form">
+            {% csrf_token %}
+
+            <!-- メールアドレス -->
+            <div class="form-group">
+                <label for="email">メールアドレス</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value="{{ student.email }}"
+                    autocomplete="email"
+                    readonly
+                    required
+                >
+            </div>
+
+            <!-- 閲覧モードのパスワード -->
+            <div class="form-group" id="password-display">
+                <label>パスワード</label>
+                <div class="password-mask">••••••••</div>
+            </div>
+
+            <!-- 編集モードのパスワード -->
+            <div class="password-section" id="password-edit" hidden>
+                <h3>パスワード変更</h3>
+
+                <!-- 現在のパスワード -->
+                <div class="form-group">
+                    <label for="current_password">現在のパスワード</label>
+
+                    <div class="password-input-wrapper">
+                        <input
+                            type="password"
+                            id="current_password"
+                            name="current_password"
+                            autocomplete="current-password"
+                            placeholder="現在のパスワード"
+                            disabled
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            aria-label="パスワードを表示"
+                            aria-pressed="false"
+                        >
+                            <svg class="eye-icon"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2"
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 aria-hidden="true">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 新しいパスワード -->
+                <div class="form-group">
+                    <label for="new_password">新しいパスワード</label>
+
+                    <div class="password-input-wrapper">
+                        <input
+                            type="password"
+                            id="new_password"
+                            name="new_password"
+                            autocomplete="new-password"
+                            placeholder="新しいパスワード"
+                            disabled
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            aria-label="パスワードを表示"
+                            aria-pressed="false"
+                        >
+                            <svg class="eye-icon"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2"
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 aria-hidden="true">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 新しいパスワード確認 -->
+                <div class="form-group">
+                    <label for="confirm_password">
+                        新しいパスワード（確認用）
+                    </label>
+
+                    <div class="password-input-wrapper">
+                        <input
+                            type="password"
+                            id="confirm_password"
+                            name="confirm_password"
+                            autocomplete="new-password"
+                            placeholder="もう一度入力してください"
+                            disabled
+                        >
+
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            aria-label="パスワードを表示"
+                            aria-pressed="false"
+                        >
+                            <svg class="eye-icon"
+                                 viewBox="0 0 24 24"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 stroke-width="2"
+                                 stroke-linecap="round"
+                                 stroke-linejoin="round"
+                                 aria-hidden="true">
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 学科 -->
+            <div class="form-group">
+                <label for="department">学科</label>
+
+                <select id="department" name="department" disabled>
+                    {% for department in departments %}
+                    <option
+                        value="{{ department }}"
+                        {% if student.department == department %}selected{% endif %}
+                    >
+                        {{ department }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 操作ボタン -->
+            <div class="setting-actions">
+                <button
+                    type="button"
+                    class="edit-button"
+                    id="edit-button"
+                >
+                    変更
+                </button>
+
+                <button
+                    type="button"
+                    class="reset-button"
+                    id="cancel-button"
+                    hidden
+                >
+                    キャンセル
+                </button>
+
+                <button
+                    type="submit"
+                    class="save-button"
+                    id="save-button"
+                    hidden
+                >
+                    保存
+                </button>
+            </div>
+
+        </form>
+    </div>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // 要素取得
+    const form = document.getElementById("setting-form");
+    const email = document.getElementById("email");
+    const department = document.getElementById("department");
+
+    const passwordDisplay = document.getElementById("password-display");
+    const passwordEdit = document.getElementById("password-edit");
+
+    const editButton = document.getElementById("edit-button");
+    const cancelButton = document.getElementById("cancel-button");
+    const saveButton = document.getElementById("save-button");
+
+    const passwordInputs = passwordEdit.querySelectorAll("input");
+    const passwordToggles = passwordEdit.querySelectorAll(".password-toggle");
+
+    // 学籍番号ごとに保存データを分ける
+    const studentId = document.getElementById("student-id").textContent.trim();
+    const storageKey = `student_settings_${studentId}`;
+
+    // views.pyのダミーデータ
+    let savedData = {
+        email: email.value,
+        department: department.value
+    };
+
+    // 保存済みデータを読み込む
+    try {
+        const stored = localStorage.getItem(storageKey);
+
+        if (stored) {
+            const parsed = JSON.parse(stored);
+
+            if (typeof parsed.email === "string") {
+                savedData.email = parsed.email;
+            }
+
+            if (typeof parsed.department === "string") {
+                const exists = Array.from(department.options).some(
+                    option => option.value === parsed.department
+                );
+
+                if (exists) {
+                    savedData.department = parsed.department;
+                }
+            }
+        }
+    } catch (error) {
+        console.warn("保存データを読み込めませんでした", error);
+    }
+
+    // パスワード欄を初期状態に戻す
+    function resetPasswordFields() {
+        passwordInputs.forEach(input => {
+            input.value = "";
+            input.type = "password";
+        });
+
+        passwordToggles.forEach(button => {
+            button.classList.remove("is-visible");
+            button.setAttribute("aria-pressed", "false");
+            button.setAttribute("aria-label", "パスワードを表示");
+        });
+    }
+
+    // 保存済みデータに戻す
+    function restoreSavedData() {
+        email.value = savedData.email;
+        department.value = savedData.department;
+
+        resetPasswordFields();
+    }
+
+    // 閲覧・編集モード切り替え
+    function setEditMode(editing) {
+        email.readOnly = !editing;
+        department.disabled = !editing;
+
+        passwordDisplay.hidden = editing;
+        passwordEdit.hidden = !editing;
+
+        passwordInputs.forEach(input => {
+            input.disabled = !editing;
+        });
+
+        editButton.hidden = editing;
+        cancelButton.hidden = !editing;
+        saveButton.hidden = !editing;
+
+        form.classList.toggle("editing", editing);
+    }
+
+    // 変更ボタン
+    editButton.addEventListener("click", function () {
+        setEditMode(true);
+    });
+
+    // キャンセルボタン
+    cancelButton.addEventListener("click", function () {
+        restoreSavedData();
+        setEditMode(false);
+    });
+
+    // 目のアイコンによるパスワード表示・非表示
+    passwordToggles.forEach(button => {
+        button.addEventListener("click", function () {
+            const input = this.parentElement.querySelector("input");
+
+            const isHidden = input.type === "password";
+
+            // パスワードの表示状態を変更
+            input.type = isHidden ? "text" : "password";
+
+            // 目のアイコンの状態を変更
+            this.classList.toggle("is-visible", isHidden);
+
+            this.setAttribute("aria-pressed", String(isHidden));
+
+            this.setAttribute(
+                "aria-label",
+                isHidden ? "パスワードを非表示" : "パスワードを表示"
+            );
+        });
+    });
+
+    // 保存ボタン
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        if (!form.reportValidity()) {
+            return;
+        }
+
+        const current = document.getElementById("current_password").value;
+        const next = document.getElementById("new_password").value;
+        const confirm = document.getElementById("confirm_password").value;
+
+        // パスワードが入力されている場合
+        if (current || next || confirm) {
+
+            if (!current || !next || !confirm) {
+                alert("パスワード変更欄をすべて入力してください。");
+                return;
+            }
+
+            if (next !== confirm) {
+                alert("新しいパスワードが一致しません。");
+                return;
+            }
+
+            // DB未接続のためパスワード変更は行わない
+            alert("パスワード変更はDB接続後に実装します。");
+            return;
+        }
+
+        // メールアドレス・学科を保存
+        const newData = {
+            email: email.value.trim(),
+            department: department.value
+        };
+
+        try {
+            localStorage.setItem(
+                storageKey,
+                JSON.stringify(newData)
+            );
+        } catch (error) {
+            alert("設定を保存できませんでした。");
+            return;
+        }
+
+        savedData = newData;
+
+        restoreSavedData();
+        setEditMode(false);
+
+        alert("設定を保存しました。");
+    });
+
+    // 初期表示
+    restoreSavedData();
+    setEditMode(false);
+
+});
+</script>
+
+{% endblock %}
