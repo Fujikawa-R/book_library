@@ -21,7 +21,7 @@ urlpatterns = [
     path("departments/<int:department_id>/deactivate/", views.department_deactivate, name="department_deactivate"),
     # 貸出状況
     path("rentals/", views.rental_list, name="rental_list"),
-    path("rentals/<int:loan_id>/", views.rental_detail, name="rental_detail"),
+    path("rentals/<int:rental_id>/", views.rental_detail, name="rental_detail"),
     # 評価の通報
     path("reports/", views.report_list, name="report_list"),
     path("reports/<int:report_id>/", views.report_detail, name="report_detail"),
