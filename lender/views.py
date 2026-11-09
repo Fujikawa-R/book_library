@@ -10,7 +10,11 @@ def standby(request):
     return render(request, "lender/await.html")
 
 
-def scan(request, mode):
+def isbn_scan(request, mode):
+    return render(request, "lender/isbn_scan.html", {"mode": mode})
+
+
+def qr_scan(request, mode):
     return render(request, "lender/isbn_scan.html", {"mode": mode})
 
 

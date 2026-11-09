@@ -20,7 +20,8 @@ register_converter(ModeConverter, "mode")
 
 urlpatterns = [
     path("", views.standby, name="standby"),
-    path("scan/<mode:mode>/", views.scan, name="scan"),
+    path("scan/isbn/<mode:mode>/", views.isbn_scan, name="scan"),
+    path("scan/qr/<mode:mode>/", views.qr_scan, name="scan"),
     path("finish/", views.finish, name="finish"),
     path("cancel/", views.cancel, name="cancel"),
 ]
