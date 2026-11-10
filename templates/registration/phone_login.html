@@ -1,117 +1,85 @@
-{% load django_bootstrap5 %}
+{% load static %}
 
-{% block title %}ログイン{% endblock title %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yom yom | ログイン</title>
+    <link rel="stylesheet" href="{% static 'css/phone/login.css' %}">
+</head>
+<body>
 
-{% block content %}
-<div class="container py-5">
+<main class="login-page">
+    <div class="login-container">
 
-    <div class="row justify-content-center">
-
-        <div class="col-lg-6 col-md-8">
-
-            <div class="card shadow-sm border-0">
-
-                {% if user.is_authenticated %}
-
-                    <div class="card-header bg-success text-white text-center py-4">
-
-                        <div class="display-5 mb-2">
-                            🎉
-                        </div>
-
-                        <h2 class="mb-1">
-                            ログイン中
-                        </h2>
-
-                        <p class="mb-0 opacity-75">
-                            筋トレ管理をご利用中です
-                        </p>
-
-                    </div>
-
-                    <div class="card-body text-center p-4">
-
-                        <h5 class="mb-4">
-                            {{ user }} さんでログインしています
-                        </h5>
-
-                        <form action="{% url 'logout' %}" method="post">
-
-                            {% csrf_token %}
-
-                            <button type="submit"
-                                    class="btn btn-danger btn-lg clickable">
-                                🚪 ログアウト
-                            </button>
-
-                        </form>
-
-                    </div>
-
-                {% else %}
-
-                    <div class="card-header bg-primary text-white text-center py-4">
-
-                        <div class="display-5 mb-2">
-                            🔐
-                        </div>
-
-                        <h2 class="mb-1">
-                            ログイン
-                        </h2>
-
-                        <p class="mb-0 opacity-75">
-                            筋トレ記録を続けましょう！
-                        </p>
-
-                    </div>
-
-
-                    <div class="card-body p-4">
-
-                        <form action="{% url 'login' %}" method="post">
-
-                            {% csrf_token %}
-
-                            {% bootstrap_form form %}
-
-                            <div class="d-grid mt-4">
-
-                                <button type="submit"
-                                        class="btn btn-primary btn-lg clickable">
-                                    🔓 ログイン
-                                </button>
-
-                            </div>
-
-                        </form>
-
-
-                        <hr class="my-4">
-
-
-                        <div class="text-center">
-
-                            <p class="text-muted mb-2">
-                                アカウントをお持ちでないですか？
-                            </p>
-
-                            <a href="{% url 'accounts:signup' %}"
-                               class="btn btn-outline-primary clickable">
-                                📝 新規登録
-                            </a>
-
-                        </div>
-
-                    </div>
-
-                {% endif %}
-
-            </div>
-
+        <div class="login-header">
+            <h1>yom yom</h1>
+            <p>図書管理システム</p>
         </div>
 
-    </div>
+        {% if user.is_authenticated %}
 
-</div>
-{% endblock %}
+            <div class="login-card">
+                <h2>ログイン中</h2>
+                <p>{{ user.email }}</p>
+
+                <a href="{% url 'phone:mypage' %}" class="login-button">
+                    マイページへ
+                </a>
+            </div>
+
+        {% else %}
+
+            <div class="login-card">
+                <h2>ログイン</h2>
+
+                {% if form.non_field_errors %}
+                    <div class="error-message">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+<form method="post" action="{% url 'phone:login' %}">                   
+     {% csrf_token %}
+
+                    <input type="hidden" name="next" value="{{ next }}">
+
+                    <div class="form-group">
+                        <label for="id_username">メールアドレス</label>
+                        <input
+                            type="email"
+                            id="id_username"
+                            name="username"
+                            placeholder="メールアドレスを入力"
+                            autocomplete="username"
+                            value="{{ form.username.value|default_if_none:'' }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_password">パスワード</label>
+                        <input
+                            type="password"
+                            id="id_password"
+                            name="password"
+                            placeholder="パスワードを入力"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" class="login-button">
+                        ログイン
+                    </button>
+                </form>
+            </div>
+
+        {% endif %}
+
+    </div>
+</main>
+
+</body>
+</html>

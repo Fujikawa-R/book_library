@@ -16,7 +16,7 @@
         <div class="student-header">
             <div>
                 <p class="student-label">学籍番号</p>
-                <h1 id="student-id">{{ student.student_id }}</h1>
+                <h1 id="student-id">{{ student.student_no }}</h1>
             </div>
             <div class="student-icon">👤</div>
         </div>
@@ -129,6 +129,13 @@
             </div>
 
         </form>
+        <form method="post" action="{% url 'phone:logout' %}">
+    {% csrf_token %}
+
+    <button type="submit" class="logout-button">
+        ログアウト
+    </button>
+</form>
     </div>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
