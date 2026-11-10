@@ -27,4 +27,3 @@ urlpatterns = [
     path("manager/", include("manager.urls")),
     path("", RedirectView.as_view(pattern_name="phone:mypage"), name="index"),
 ]
-
