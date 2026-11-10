@@ -1,15 +1,10 @@
-from django.shortcuts import redirect, render
-from django.views.decorators.http import require_POST
-
-import base64
-import io
-import json
 import re
 import xml.etree.ElementTree as ET
 
 import requests
 from django.http import JsonResponse
-
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
 # 貸借PCの流れ: standby → isbn_scan → user_auth(QR) → finish
 # ※ await は Python の予約語なので、await.html の view 名は standby にしている
@@ -27,12 +22,12 @@ def isbn_scan(request, mode):
             "mode": mode,
             "page_title": SCAN_TITLES[mode],
         })
- 
-def qr_scan(request, mode):
-    return render(request, "lender/qr_scan.html", {"mode": mode})
 
-def user_auth(request):
-    return render(request, "lender/user_auth.html")
+def qr_scan(request, mode):
+    return render(request, "lender/qr_scan.html", {"mode": mode,})
+
+def user_auth(request,mode):
+    return render(request, "lender/user_auth.html", {"mode": mode,})
 
 def finish(request):
     return render(request, "lender/finish.html")
@@ -43,15 +38,8 @@ def cancel(request):
     # TODO: セッションの取引情報を破棄する
     return redirect("lender:standby")
 
-
-FIELDS = ("isbn", "title", "author", "edition_year", "cover")
-WANTED = ("title", "author", "edition_year", "cover")   # これらがそろえば追加の問い合わせをしない
-
-def _year(s):
-    """'20260505' '2026-05-05' '2026.5' '2026' → '2026'。年が取れなければ空文字"""
-    m = re.search(r"\d{4}", str(s or ""))
-    return m.group() if m else ""
-
+FIELDS = ("isbn", "title", "author")
+WANTED = ("title", "author")   # これらがそろえば追加の問い合わせをしない
 
 def _isbn13_ok(isbn13):
     """ISBN-13の末尾のチェックデジットが正しいか"""
@@ -94,8 +82,6 @@ def _openbd_lookup(isbn):
         "isbn": summary.get("isbn"),
         "title": summary.get("title"),
         "author": summary.get("author"),
-        "edition_year": _year(summary.get("pubdate")),
-        "cover": summary.get("cover") or "",
     }
 
 
@@ -135,9 +121,7 @@ def _ndl_lookup(isbn):
     return {
         "title": (values.get("title") or [""])[0],
         "author": "、".join(values.get("creator", [])),
-        "edition_year": _year((values.get("date") or values.get("issued") or [""])[0]),
     }
-
 
 def _google_books_lookup(isbn):
     try:
@@ -153,14 +137,10 @@ def _google_books_lookup(isbn):
     if not items:
         return {}
 
-    info = items[0].get("volumeInfo") or {}
-    links = info.get("imageLinks") or {}                                  
-    cover = links.get("thumbnail") or links.get("smallThumbnail") or ""
+    info = items[0].get("volumeInfo") or {}                              
     return {
         "title": info.get("title", ""),
-        "author": "、".join(info.get("authors") or []),
-        "edition_year": _year(info.get("publishedDate")),
-        "cover": cover.replace("http://", "https://"),                    
+        "author": "、".join(info.get("authors") or []),               
     }
 
 
