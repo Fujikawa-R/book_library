@@ -22,6 +22,8 @@ urlpatterns = [
     path("", views.standby, name="standby"),
     path("scan/isbn/<mode:mode>/", views.isbn_scan, name="isbn_scan"),
     path("scan/qr/<mode:mode>/", views.qr_scan, name="qr_scan"),
+    path("user_auth/",views.user_auth,name="user_auth"),
     path("finish/", views.finish, name="finish"),
     path("cancel/", views.cancel, name="cancel"),
+    path("api/book/<str:isbn>/", views.book_info, name="book_info"),
 ]

@@ -1,0 +1,127 @@
+{% extends "lender_base.html" %}
+
+{% block title %}ISBN手動入力{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">{{ page_title }}</h1>
+<h5 class="h5 mb-3">ISBNを手動入力またはリーダーにスキャンしてください</h5>
+
+<form id="isbn_form" class="d-flex gap-2 mx-auto" style="max-width: 640px;">
+  <input id="isbn_input" type="text" class="form-control" autocomplete="off" autofocus
+         placeholder="ISBN(10桁または13桁。ハイフンは省略可)">
+  <button id="isbn_add" type="submit" class="btn btn-primary text-nowrap">追加</button>
+</form>
+<p id="message" class="my-2"></p>
+
+<div class="mx-auto" style="max-width: 640px;">
+  <table class="table table-bordered align-middle">
+    <thead><tr><th>タイトル</th><th>著者</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<div class="d-flex justify-content-center gap-3 mt-3">
+  <button id="user_auth" type="button" class="btn btn-primary col-6" disabled>確定</button>
+</div>
+<footer style="font-size:12px; margin-top:24px;">
+  書誌情報は、OpenBD、国立国会図書館サーチ(NDLサーチ)のAPI、Google Books APIを利用して取得しています。
+</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MODE = "{{ mode }}";   // "loan" か "return"
+
+const CONFIRM_URL = "{% url 'lender:user_auth' %}";   // 確定 → 本人確認
+const BOOK_API    = "{% url 'lender:book_info' 'ISBN' %}";            // 'ISBN' は、後で置き換える目印
+
+const STORAGE_KEY = "selectedBooks_" + MODE;   // 読み取り画面と同じキー(一覧を共有する)
+
+const message = document.getElementById("message");
+const rows = document.getElementById("rows");
+const input = document.getElementById("isbn_input");
+const confirmBtn = document.getElementById("user_auth");
+
+const books = new Map();   // isbn → {isbn, title, author}
+let busy = false;
+
+function show(text) { message.textContent = text; }
+
+function render() {
+  rows.innerHTML = "";
+  for (const b of books.values()) {
+    const tr = document.createElement("tr");
+    for (const text of [b.title, b.author]) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.append(td);
+    }
+    const del = document.createElement("button");
+    del.textContent = "削除";
+    del.className = "btn btn-sm btn-outline-danger";
+    del.onclick = () => { books.delete(b.isbn); render(); };
+    const td = document.createElement("td");
+    td.append(del);
+    tr.append(td);
+    rows.append(tr);
+  }
+  confirmBtn.disabled = books.size === 0;
+}
+
+// 読み取り画面から来たときの一覧を復元する(復元したら、保存分は消す)
+try {
+  const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
+  for (const b of saved) books.set(b.isbn, b);
+} catch (e) {}
+sessionStorage.removeItem(STORAGE_KEY);
+render();
+
+async function addBook(raw) {
+  if (busy) return;
+  const code = raw.replace(/[-\s]/g, "");
+  if (!/^(\d{13}|\d{9}[\dXx])$/.test(code)) {
+    show("ISBNは10桁または13桁で入力してください");
+    return;
+  }
+  busy = true;
+  try {
+    const res = await fetch(BOOK_API.replace("ISBN", encodeURIComponent(code)));
+    if (!(res.headers.get("content-type") || "").includes("json")) {
+      show(`サーバーがJSONを返していません(状態 ${res.status})`);
+      return;
+    }
+    const data = await res.json();
+    if (!res.ok) { show(data.error); return; }
+    if (books.has(data.isbn)) {
+      show("この本は追加済みです");
+      input.value = "";
+      return;
+    }
+    books.set(data.isbn, { isbn: data.isbn, title: data.title, author: data.author });
+    render();
+    show("追加しました: " + data.title);
+    input.value = "";
+  } catch (e) {
+    console.error(e);
+    show("通信に失敗しました");
+  } finally {
+    busy = false;
+    input.focus();
+  }
+}
+
+// Enterキーでも、「追加」ボタンでも、同じ処理
+document.getElementById("isbn_form").onsubmit = (e) => {
+  e.preventDefault();
+  addBook(input.value);
+};
+
+// 「確定」と「カメラで読み取る」で共通の画面遷移
+function goNext(url) {
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...books.values()]));
+  location.href = url;
+}
+
+confirmBtn.onclick = () => goNext(CONFIRM_URL);
+</script>
+{% endblock %}
