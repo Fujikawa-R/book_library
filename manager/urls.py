@@ -7,7 +7,7 @@ app_name = "manager"
 urlpatterns = [
     # 図書
     path("books/", views.book_list, name="book_list"),
-    path("books/add/", views.add_book, name="add_book"),
+    path("books/add/", views.book_add, name="book_add"),
     path("books/<str:isbn>/", views.book_detail, name="book_detail"),
     path("books/<str:isbn>/suspend/", views.book_suspend_toggle, name="book_suspend_toggle"),
     path("books/<str:isbn>/lost/", views.book_lost, name="book_lost"),

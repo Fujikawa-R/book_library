@@ -1,0 +1,262 @@
+{% extends "manager_base.html" %}
+
+{% block title %}図書の追加{% endblock title %}
+
+{% block style %}
+<style>
+  #isbn[readonly] { background-color: #fff; cursor: default; }
+  .book-table th { background-color: #f8f9fa; }
+  .qty-input { width: 5rem; }
+</style>
+{% endblock style %}
+
+{% block content %}
+<main class="container py-4" style="max-width: 820px;">
+  <h1 class="h4 text-center fw-normal mb-4">追加したい本のISBNを読み込んでください</h1>
+
+  <div class="input-group input-group-lg">
+    <input id="isbn" type="text" inputmode="numeric" autocomplete="off"
+           class="form-control" placeholder="ISBN" aria-label="ISBN" readonly>
+    <button id="addBtn" type="button" class="btn btn-secondary px-4">
+      <span id="addSpinner" class="spinner-border spinner-border-sm me-1 d-none" aria-hidden="true"></span>追加
+    </button>
+  </div>
+  <div class="form-text mb-3">※ISBNは978から始まる番号がついたバーコードです</div>
+
+  <div id="message" class="alert d-none py-2" role="status" aria-live="polite"></div>
+
+  <div class="table-responsive mt-4">
+    <table class="table table-bordered align-middle book-table mb-0">
+      <thead>
+        <tr class="text-center">
+          <th scope="col">タイトル</th>
+          <th scope="col" style="width: 22%;">著者</th>
+          <th scope="col" style="width: 150px;">冊数</th>
+        </tr>
+      </thead>
+      <tbody id="bookList"></tbody>
+    </table>
+  </div>
+
+  <form id="bookForm" method="post" class="d-flex justify-content-between align-items-center mt-5">
+    {% csrf_token %}
+    <input type="hidden" name="books" id="booksJson">
+    <button id="manualBtn" type="button" class="btn btn-secondary btn-lg">
+      <i class="bi bi-keyboard me-1"></i><span id="manualLabel">ISBNを手動入力</span>
+    </button>
+    <button id="confirmBtn" type="submit" class="btn btn-primary btn-lg px-4" disabled>確定</button>
+  </form>
+</main>
+
+<script>
+(() => {
+  const isbnInput = document.getElementById('isbn');
+  const addBtn = document.getElementById('addBtn');
+  const addSpinner = document.getElementById('addSpinner');
+  const manualBtn = document.getElementById('manualBtn');
+  const manualLabel = document.getElementById('manualLabel');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const listEl = document.getElementById('bookList');
+  const messageEl = document.getElementById('message');
+  const form = document.getElementById('bookForm');
+  const booksJson = document.getElementById('booksJson');
+
+  const books = new Map();   // isbn -> { isbn, title, author, qty }
+  let manualMode = false;
+
+  function say(text, level) {   // level: success / warning / danger / info
+    if (!text) { messageEl.className = 'alert d-none py-2'; messageEl.textContent = ''; return; }
+    messageEl.className = 'alert alert-' + (level || 'info') + ' py-2';
+    messageEl.textContent = text;
+  }
+
+  function normalize(raw) {
+    return raw.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+              .replace(/[-\s]/g, '');
+  }
+
+  function isValidIsbn13(s) {
+    if (!/^97[89]\d{10}$/.test(s)) return false;
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += Number(s[i]) * (i % 2 === 0 ? 1 : 3);
+    return (10 - (sum % 10)) % 10 === Number(s[12]);
+  }
+
+  async function fetchBookInfo(isbn) {
+    try {
+      const r = await fetch('https://api.openbd.jp/v1/get?isbn=' + isbn);
+      const data = await r.json();
+      const s = data && data[0] && data[0].summary;
+      if (s && s.title) return { title: s.title, author: s.author || '' };
+    } catch (e) { /* 取得できない */ }
+    return null;
+  }
+
+  function render() {
+    listEl.innerHTML = '';
+    if (books.size === 0) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 3;
+      td.className = 'text-center text-secondary py-4';
+      td.textContent = 'バーコードを読み込むと、ここに追加されます';
+      tr.appendChild(td);
+      listEl.appendChild(tr);
+      confirmBtn.disabled = true;
+      return;
+    }
+    for (const b of books.values()) {
+      const tr = document.createElement('tr');
+
+      const label = b.title || ('ISBN ' + b.isbn);
+
+      const tdTitle = document.createElement('td');
+      const sub = document.createElement('small');
+      sub.className = 'text-secondary';
+      sub.textContent = 'ISBN ' + b.isbn;
+      const tdAuthor = document.createElement('td');
+
+      if (b.manual) {
+        // 書誌情報を取得できなかった本: タイトルと著者を利用者が入力する
+        const titleIn = document.createElement('input');
+        titleIn.type = 'text';
+        titleIn.className = 'form-control form-control-sm mb-1 book-title-input';
+        titleIn.placeholder = 'タイトル（必須）';
+        titleIn.value = b.title;
+        titleIn.setAttribute('aria-label', 'ISBN ' + b.isbn + ' のタイトル');
+        titleIn.addEventListener('input', () => {
+          b.title = titleIn.value;
+          if (b.title.trim()) titleIn.classList.remove('is-invalid');
+        });
+        tdTitle.append(titleIn, sub);
+
+        const authorIn = document.createElement('input');
+        authorIn.type = 'text';
+        authorIn.className = 'form-control form-control-sm';
+        authorIn.placeholder = '著者';
+        authorIn.value = b.author;
+        authorIn.setAttribute('aria-label', 'ISBN ' + b.isbn + ' の著者');
+        authorIn.addEventListener('input', () => { b.author = authorIn.value; });
+        tdAuthor.appendChild(authorIn);
+      } else {
+        const t = document.createElement('div');
+        t.textContent = b.title;
+        tdTitle.append(t, sub);
+        tdAuthor.textContent = b.author;
+      }
+
+      const tdQty = document.createElement('td');
+      const wrap = document.createElement('div');
+      wrap.className = 'd-flex justify-content-center align-items-center gap-1';
+      const qty = document.createElement('input');
+      qty.type = 'number'; qty.min = '1'; qty.max = '999'; qty.value = b.qty;
+      qty.className = 'form-control form-control-sm text-center qty-input';
+      qty.setAttribute('aria-label', label + ' の冊数');
+      qty.addEventListener('change', () => {
+        const n = parseInt(qty.value, 10);
+        b.qty = Number.isFinite(n) && n >= 1 ? Math.min(n, 999) : 1;
+        qty.value = b.qty;
+      });
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'btn btn-sm btn-outline-secondary border-0';
+      rm.innerHTML = '<i class="bi bi-x-lg"></i>';
+      rm.setAttribute('aria-label', label + ' を一覧から削除');
+      rm.addEventListener('click', () => { books.delete(b.isbn); render(); });
+      wrap.append(qty, rm);
+      tdQty.appendChild(wrap);
+
+      tr.append(tdTitle, tdAuthor, tdQty);
+      listEl.appendChild(tr);
+    }
+    confirmBtn.disabled = false;
+  }
+
+  async function addIsbn(raw) {
+    const isbn = normalize(raw);
+    if (!isbn) { say('ISBNを読み込むか、入力してください。', 'warning'); return; }
+    if (!isValidIsbn13(isbn)) {
+      say('ISBNが正しくありません。978または979から始まる13桁の番号を確認してください。', 'danger');
+      return;
+    }
+    if (books.has(isbn)) {
+      books.get(isbn).qty += 1;
+      isbnInput.value = '';
+      render();
+      say('同じ本が読み込まれたので、冊数を1冊増やしました。', 'success');
+      return;
+    }
+    say('書誌情報を取得しています…', 'info');
+    addBtn.disabled = true; addSpinner.classList.remove('d-none');
+    const info = await fetchBookInfo(isbn);
+    addBtn.disabled = false; addSpinner.classList.add('d-none');
+    if (info) {
+      books.set(isbn, { isbn, title: info.title, author: info.author, qty: 1 });
+      say('追加しました。', 'success');
+    } else {
+      books.set(isbn, { isbn, title: '', author: '', qty: 1, manual: true });
+      say('書誌情報を取得できませんでした。一覧にタイトルと著者を入力してください。', 'warning');
+    }
+    isbnInput.value = '';
+    render();
+    const firstEmpty = [...listEl.querySelectorAll('.book-title-input')].find(i => !i.value.trim());
+    if (firstEmpty) firstEmpty.focus();
+  }
+
+  function setManual(on) {
+    manualMode = on;
+    isbnInput.readOnly = !on;
+    manualLabel.textContent = on ? 'バーコード読み取りに戻る' : 'ISBNを手動入力';
+    isbnInput.value = '';
+    if (on) { isbnInput.focus(); say('ISBNを入力して「追加」を押してください。', 'info'); }
+    else { isbnInput.blur(); say(''); }
+  }
+  manualBtn.addEventListener('click', () => setManual(!manualMode));
+  addBtn.addEventListener('click', () => addIsbn(isbnInput.value));
+  isbnInput.addEventListener('keydown', e => {
+    if (manualMode && e.key === 'Enter') { e.preventDefault(); addIsbn(isbnInput.value); }
+  });
+
+  // バーコードリーダー（キーボード入力として届く）
+  let buffer = '';
+  let lastKeyAt = 0;
+  document.addEventListener('keydown', e => {
+    if (manualMode) return;
+    const t = e.target;
+    if (t instanceof HTMLElement && ['INPUT', 'BUTTON', 'SELECT'].includes(t.tagName) && t !== isbnInput) return;
+    const now = Date.now();
+    if (now - lastKeyAt > 100) buffer = '';
+    lastKeyAt = now;
+    if (e.key === 'Enter') {
+      if (buffer.length >= 10) { e.preventDefault(); const code = buffer; buffer = ''; isbnInput.value = code; addIsbn(code); }
+      buffer = '';
+    } else if (/^[0-9]$/.test(e.key)) {
+      buffer += e.key;
+      isbnInput.value = buffer;
+    }
+  });
+
+  // 確定: 一覧をJSONにして通常のPOSTで送る
+  form.addEventListener('submit', e => {
+    if (books.size === 0) { e.preventDefault(); return; }
+    const missing = [...listEl.querySelectorAll('.book-title-input')].filter(i => !i.value.trim());
+    if (missing.length) {
+      e.preventDefault();
+      missing.forEach(i => i.classList.add('is-invalid'));
+      missing[0].focus();
+      say('タイトルが未入力の本があります。タイトルを入力してください。', 'danger');
+      return;
+    }
+    const payload = [...books.values()].map(b => ({ isbn: b.isbn, title: b.title.trim(), author: b.author.trim(), qty: b.qty }));
+    const total = payload.reduce((s, b) => s + b.qty, 0);
+    if (!confirm(payload.length + '種類・合計' + total + '冊を登録します。よろしいですか？')) {
+      e.preventDefault();
+      return;
+    }
+    booksJson.value = JSON.stringify(payload);
+  });
+
+  render();
+})();
+</script>
+{% endblock content %}
