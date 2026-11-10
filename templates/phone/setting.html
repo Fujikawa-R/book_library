@@ -17,7 +17,7 @@
         <div class="student-header">
             <div>
                 <p class="student-label">学籍番号</p>
-                <h1 id="student-id">{{ student.student_id }}</h1>
+                <h1 id="student-id">{{ student.student_no }}</h1>
             </div>
             <div class="student-icon">👤</div>
         </div>
@@ -34,7 +34,7 @@
                     type="email"
                     id="email"
                     name="email"
-                    value="{{ student.email }}"
+                    value="{{ student.user.email }}"
                     autocomplete="email"
                     readonly
                     required
@@ -166,10 +166,10 @@
                 <select id="department" name="department" disabled>
                     {% for department in departments %}
                     <option
-                        value="{{ department }}"
-                        {% if student.department == department %}selected{% endif %}
+                        value="{{ department.id }}"
+                        {% if student.department_id == department.id %}selected{% endif %}
                     >
-                        {{ department }}
+                        {{ department.name }}
                     </option>
                     {% endfor %}
                 </select>
@@ -205,13 +205,19 @@
             </div>
 
         </form>
+        <form method="post" action="{% url 'phone:logout' %}">
+    {% csrf_token %}
+
+    <button type="submit" class="logout-button">
+        ログアウト
+    </button>
+</form>
     </div>
 </main>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // 要素取得
     const form = document.getElementById("setting-form");
     const email = document.getElementById("email");
     const department = document.getElementById("department");
@@ -226,42 +232,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const passwordInputs = passwordEdit.querySelectorAll("input");
     const passwordToggles = passwordEdit.querySelectorAll(".password-toggle");
 
-    // 学籍番号ごとに保存データを分ける
-    const studentId = document.getElementById("student-id").textContent.trim();
-    const storageKey = `student_settings_${studentId}`;
+    // DBから表示された初期値を保持
+    const originalEmail = email.value;
+    const originalDepartment = department.value;
 
-    // views.pyのダミーデータ
-    let savedData = {
-        email: email.value,
-        department: department.value
-    };
-
-    // 保存済みデータを読み込む
-    try {
-        const stored = localStorage.getItem(storageKey);
-
-        if (stored) {
-            const parsed = JSON.parse(stored);
-
-            if (typeof parsed.email === "string") {
-                savedData.email = parsed.email;
-            }
-
-            if (typeof parsed.department === "string") {
-                const exists = Array.from(department.options).some(
-                    option => option.value === parsed.department
-                );
-
-                if (exists) {
-                    savedData.department = parsed.department;
-                }
-            }
-        }
-    } catch (error) {
-        console.warn("保存データを読み込めませんでした", error);
-    }
-
-    // パスワード欄を初期状態に戻す
     function resetPasswordFields() {
         passwordInputs.forEach(input => {
             input.value = "";
@@ -275,15 +249,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 保存済みデータに戻す
-    function restoreSavedData() {
-        email.value = savedData.email;
-        department.value = savedData.department;
-
-        resetPasswordFields();
-    }
-
-    // 閲覧・編集モード切り替え
     function setEditMode(editing) {
         email.readOnly = !editing;
         department.disabled = !editing;
@@ -309,21 +274,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // キャンセルボタン
     cancelButton.addEventListener("click", function () {
-        restoreSavedData();
+        email.value = originalEmail;
+        department.value = originalDepartment;
+
+        resetPasswordFields();
         setEditMode(false);
     });
 
-    // 目のアイコンによるパスワード表示・非表示
+    // パスワード表示切り替え
     passwordToggles.forEach(button => {
         button.addEventListener("click", function () {
             const input = this.parentElement.querySelector("input");
 
             const isHidden = input.type === "password";
 
-            // パスワードの表示状態を変更
             input.type = isHidden ? "text" : "password";
 
-            // 目のアイコンの状態を変更
             this.classList.toggle("is-visible", isHidden);
 
             this.setAttribute("aria-pressed", String(isHidden));
@@ -337,60 +303,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 保存ボタン
     form.addEventListener("submit", function (event) {
-        event.preventDefault();
-
-        if (!form.reportValidity()) {
-            return;
-        }
-
         const current = document.getElementById("current_password").value;
         const next = document.getElementById("new_password").value;
         const confirm = document.getElementById("confirm_password").value;
 
-        // パスワードが入力されている場合
         if (current || next || confirm) {
-
             if (!current || !next || !confirm) {
+                event.preventDefault();
                 alert("パスワード変更欄をすべて入力してください。");
                 return;
             }
 
             if (next !== confirm) {
+                event.preventDefault();
                 alert("新しいパスワードが一致しません。");
                 return;
             }
-
-            // DB未接続のためパスワード変更は行わない
-            alert("パスワード変更はDB接続後に実装します。");
-            return;
         }
 
-        // メールアドレス・学科を保存
-        const newData = {
-            email: email.value.trim(),
-            department: department.value
-        };
-
-        try {
-            localStorage.setItem(
-                storageKey,
-                JSON.stringify(newData)
-            );
-        } catch (error) {
-            alert("設定を保存できませんでした。");
-            return;
-        }
-
-        savedData = newData;
-
-        restoreSavedData();
-        setEditMode(false);
-
-        alert("設定を保存しました。");
+        // preventDefaultしないのでDjangoへPOST送信される
+        saveButton.disabled = true;
+        saveButton.textContent = "保存中...";
     });
 
-    // 初期表示
-    restoreSavedData();
+    resetPasswordFields();
     setEditMode(false);
 
 });

@@ -1,10 +1,13 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 
 from . import views
 
 app_name = "phone"
 
 urlpatterns = [
+    path("login/", auth_views.LoginView.as_view(template_name="registration/phone_login.html"), name="login"),
+    path("logout/",auth_views.LogoutView.as_view(template_name="registration/phone_logged_out.html"),name="logout"),
     path("mypage/", views.mypage, name="mypage"),
     path("setting/", views.setting, name="setting"),
     path("books/", views.book_search, name="book_search"),
