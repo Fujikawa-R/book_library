@@ -1,4 +1,3 @@
-
 /* =========================
    設定画面全体
 ========================= */
@@ -290,6 +289,35 @@
     display: none !important;
 }
 
+/* トースト */
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 100px;
+    transform: translate(-50%, 20px);
+    max-width: calc(100% - 32px);
+    padding: 12px 20px;
+    border-radius: 999px;
+    background: #57caca;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.toast.error {
+    background: #c62828;
+}
+
 /* =========================
    小さいスマホ
 ========================= */
@@ -311,22 +339,4 @@
     .save-button {
         padding: 12px;
     }
-}
-
-
-.logout-button {
-    width: 100%;
-    margin-top: 24px;
-    padding: 14px;
-    border: 1px solid #fecaca;
-    border-radius: 10px;
-    background-color: #fff;
-    color: #dc2626;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.logout-button:hover {
-    background-color: #fef2f2;
 }
