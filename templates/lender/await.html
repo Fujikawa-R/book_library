@@ -1,12 +1,12 @@
-{% extends "rental_base.html" %}
+{% extends "lender_base.html" %}
 {% load django_bootstrap5 %}
 
 {% block title %}待機画面{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-center align-items-center gap-4" style="height: 60vh;">
-  <a class="btn btn-outline-dark btn-lg px-5 py-5 fs-3 w-100" href="{% url 'lender:scan' 'loan' %}">貸出</a>
-  <a class="btn btn-outline-dark btn-lg px-5 py-5 fs-3 w-100" href="{% url 'lender:scan' 'return' %}">返却</a>
+  <a class="btn btn-outline-dark btn-lg px-5 py-5 fs-3 w-100" href="{% url 'lender:isbn_scan' 'loan' %}">貸出</a>
+  <a class="btn btn-outline-dark btn-lg px-5 py-5 fs-3 w-100" href="{% url 'lender:isbn_scan' 'return' %}">返却</a>
 </div>
 {% endblock %}
 

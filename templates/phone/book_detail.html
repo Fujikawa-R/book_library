@@ -1,1 +1,139 @@
 {% extends "phone_base.html" %}
+
+{% load static %}
+
+{% block title %}図書詳細{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/phone/detail.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<main class="detail-page">
+    <div class="detail-container">
+
+        <!-- 書籍情報 -->
+        <section class="book-detail-card">
+
+            <div class="book-main">
+
+                <!-- 書籍情報 -->
+                <div class="book-data">
+
+                    <div class="book-data-item">
+                        <span class="data-label">タイトル</span>
+                        <span class="data-value">
+                            {{ book.title|default:"タイトル未登録" }}
+                        </span>
+                    </div>
+
+                    <div class="book-data-item">
+                        <span class="data-label">著者</span>
+                        <span class="data-value">
+                            {{ book.author|default:"著者未登録" }}
+                        </span>
+                    </div>
+
+                    <div class="book-data-item">
+                        <span class="data-label">タグ</span>
+                        <span class="data-value">
+                            {{ book.tag|default:"タグなし" }}
+                        </span>
+                    </div>
+
+                </div>
+
+                <!-- 書籍画像 -->
+                <div class="book-image">
+                    {% if book.image %}
+                        <img src="{{ book.image.url }}" alt="{{ book.title }}">
+                    {% else %}
+                        <span>📖</span>
+                        <small>NO IMAGE</small>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <!-- 評価 -->
+            <div class="book-rating">
+                <span class="rating-label">評価</span>
+                <span class="rating-star">☆</span>
+                <span class="rating-score">
+                    {{ book.rating|default_if_none:"0" }}/5
+                </span>
+            </div>
+
+        </section>
+
+        <!-- 口コミ -->
+        <section class="review-section">
+
+            <h2>口コミ</h2>
+
+            <!-- 自分の口コミ -->
+            <div class="review-group">
+
+                <h3>自分の口コミ</h3>
+
+                <div class="my-review">
+                    {% if my_review %}
+                        <p>{{ my_review.comment }}</p>
+                    {% else %}
+                        <p class="empty-review">
+                            まだ口コミを投稿していません
+                        </p>
+                    {% endif %}
+                </div>
+
+                <button type="button" class="review-edit-btn">
+                    編集
+                </button>
+
+            </div>
+
+            <!-- その他の口コミ -->
+            <div class="review-group">
+
+                <h3>その他の口コミ</h3>
+
+                <div class="other-reviews">
+
+                    {% for review in reviews %}
+
+                    <article class="review-item">
+
+                        <div class="review-top">
+                            <span class="review-user">
+                                {{ review.user }}
+                            </span>
+
+                            <span class="review-stars">
+                                ★ {{ review.rating }}/5
+                            </span>
+                        </div>
+
+                        <p>{{ review.comment }}</p>
+
+                    </article>
+
+                    {% empty %}
+
+                    <p class="empty-review">
+                        まだ口コミがありません
+                    </p>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+</main>
+
+{% endblock %}
