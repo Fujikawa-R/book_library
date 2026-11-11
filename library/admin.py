@@ -50,10 +50,10 @@ class ReviewTagInline(admin.TabularInline):
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    list_display = ("book", "student", "point", "is_active", "created_at")
+    list_display = ("book", "student", "admin_user", "point", "is_active", "created_at")
     list_filter = ("is_active", "point")
-    search_fields = ("book__title", "student__student_name", "comment")
-    raw_id_fields = ("student", "book")
+    search_fields = ("book__title", "student__student_name", "admin_user__email", "comment")
+    raw_id_fields = ("student", "admin_user", "book")
     inlines = [ReviewTagInline]
 
 

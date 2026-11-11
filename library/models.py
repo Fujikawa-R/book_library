@@ -120,9 +120,15 @@ class Rental(models.Model):
 # ---------------------------------------------------------------------------
 
 class Review(models.Model):
-    """図書の評価。1人1冊につき1件。削除せず無効化する。"""
+    """図書の評価。1人1冊につき1件。削除せず無効化する。
+    投稿者は生徒（student）か管理者（admin_user）のどちらか一方。"""
     student = models.ForeignKey(
-        "accounts.Student", verbose_name="生徒", on_delete=models.PROTECT, related_name="reviews"
+        "accounts.Student", verbose_name="生徒", on_delete=models.PROTECT, related_name="reviews",
+        null=True, blank=True,
+    )
+    admin_user = models.ForeignKey(
+        "accounts.User", verbose_name="管理者", on_delete=models.PROTECT, related_name="admin_reviews",
+        null=True, blank=True,
     )
     book = models.ForeignKey(
         Book, verbose_name="図書", on_delete=models.PROTECT, related_name="reviews"
@@ -140,14 +146,28 @@ class Review(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["student", "book"], name="unique_review_per_student_book"),
+            models.UniqueConstraint(fields=["admin_user", "book"], name="unique_review_per_admin_book"),
             models.CheckConstraint(
                 condition=Q(point__gte=1, point__lte=5),
                 name="review_point_range",
             ),
+            # 生徒と管理者のどちらか一方だけを入れる
+            models.CheckConstraint(
+                condition=(Q(student__isnull=False, admin_user__isnull=True)
+                           | Q(student__isnull=True, admin_user__isnull=False)),
+                name="review_author_student_xor_admin",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.book}：{self.point}点（{self.student}）"
+        return f"{self.book}：{self.point}点（{self.reviewer_name}）"
+
+    @property
+    def reviewer_name(self):
+        """画面に出す投稿者名。生徒は「学科/学年」、管理者は「先生」と表示する。"""
+        if self.student_id is not None:
+            return f"{self.student.department.name}/{self.student.grade}年"
+        return "先生"
 
     @property
     def is_deleted(self):
