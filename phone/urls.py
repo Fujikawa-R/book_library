@@ -15,4 +15,5 @@ urlpatterns = [
     path("reviews/<int:review_id>/report/", views.review_report, name="review_report"),
     path("isbn/scan/", views.isbn_scan, name="isbn_scan"),
     path("isbn/typing/", views.isbn_typing, name="isbn_typing"),
+    path("signup/", views.signup, name="signup"),
 ]

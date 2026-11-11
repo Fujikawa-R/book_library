@@ -1,3 +1,4 @@
+
 {% load static %}
 
 <!DOCTYPE html>
@@ -40,8 +41,8 @@
                     </div>
                 {% endif %}
 
-<form method="post" action="{% url 'phone:login' %}">                   
-     {% csrf_token %}
+                <form method="post" action="{% url 'phone:login' %}">
+                    {% csrf_token %}
 
                     <input type="hidden" name="next" value="{{ next }}">
 
@@ -74,6 +75,13 @@
                         ログイン
                     </button>
                 </form>
+
+                <div class="register-link">
+                    <p>アカウントをお持ちでない方</p>
+                    <a href="{% url 'phone:signup' %}" class="register-button">
+                        新規登録
+                    </a>
+                </div>
             </div>
 
         {% endif %}
