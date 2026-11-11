@@ -1,62 +1,42 @@
-{% extends "base.html" %}
-{% load django_bootstrap5 %}
+{% load static %}
 
-{% block title %}ログアウト{% endblock title %}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yom yom | ログアウト</title>
+    <link rel="stylesheet" href="{% static 'css/phone/logged_out.css' %}">
+</head>
+<body>
 
-{% block content %}
-<div class="container py-5">
+<main class="logout-page">
+    <div class="logout-container">
 
-    <div class="row justify-content-center">
+        <div class="logout-header">
+            <h1>yom yom</h1>
+            <p>図書管理システム</p>
+        </div>
 
-        <div class="col-lg-6 col-md-8">
+        <div class="logout-card">
 
-            <div class="card shadow-sm border-0 text-center">
+            <div class="logout-icon">✓</div>
 
-                <div class="card-header bg-success text-white py-4">
+            <h2>ログアウトしました</h2>
 
-                    <div class="display-5 mb-2">
-                        👋
-                    </div>
+            <p class="logout-message">
+                ご利用ありがとうございました。<br>
+                またのご利用をお待ちしています。
+            </p>
 
-                    <h2 class="mb-1">
-                        ログアウトしました
-                    </h2>
-
-                    <p class="mb-0 opacity-75">
-                        ご利用ありがとうございました
-                    </p>
-
-                </div>
-
-
-                <div class="card-body p-5">
-
-                    <div class="mb-4">
-
-                        <div class="display-6 mb-3">
-                            💪
-                        </div>
-
-                        <p class="text-muted mb-0">
-                            またトレーニングの記録を<br>
-                            続けましょう！
-                        </p>
-
-                    </div>
-
-
-                    <a href="{% url 'login' %}"
-                       class="btn btn-primary btn-lg clickable">
-                        🔐 ログインページへ
-                    </a>
-
-                </div>
-
-            </div>
+            <a href="{% url 'phone:login' %}" class="login-button">
+                ログイン画面へ
+            </a>
 
         </div>
 
     </div>
+</main>
 
-</div>
-{% endblock %}
+</body>
+</html>

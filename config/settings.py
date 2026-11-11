@@ -47,9 +47,10 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 ALLOWED_EMAIL_DOMAINS = ['morijyobi.ac.jp']
-LOGIN_URL = 'login'
+
+LOGIN_URL = 'phone:login'
 LOGIN_REDIRECT_URL = 'phone:mypage'
-LOGOUT_REDIRECT_URL = 'login'
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

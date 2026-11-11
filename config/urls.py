@@ -25,6 +25,5 @@ urlpatterns = [
     path("phone/", include("phone.urls")),
     path("lender/", include("lender.urls")),
     path("manager/", include("manager.urls")),
-    path("", RedirectView.as_view(pattern_name="phone:mypage"), name="index"),
+    path("", RedirectView.as_view(pattern_name="phone:login"), name="index"),
 ]
-

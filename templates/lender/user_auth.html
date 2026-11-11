@@ -1,0 +1,40 @@
+{% extends "lender_base.html" %}
+
+{% block title %}利用者認証{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">認証方法を選択してください</h1>
+<div class="d-flex justify-content-center align-items-center gap-4"
+     style="height: 60vh;">
+
+    <button type="button"
+            id="qr_scan"
+            class="btn btn-outline-dark btn-lg px-5 py-5 fs-3 w-100">
+        QRコードを読み込む
+    </button>
+
+    <button type="button"
+            id="manual_auth"
+            class="btn btn-outline-dark btn-lg px-5 py-5 fs-3 w-100">
+        手動で認証情報を入力
+    </button>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const MODE = "{{ mode }}";
+
+    const QR_SCAN_URL = MODE === "loan"
+        ? "{% url 'lender:qr_scan' 'loan' %}"
+        : "{% url 'lender:qr_scan' 'return' %}";
+
+    document.getElementById("qr_scan").addEventListener("click", () => {
+        location.href = QR_SCAN_URL;
+    });
+    document.getElementById("manual_auth").addEventListener("click", () => {
+        location.href = QR_SCAN_URL;
+    });
+</script>
+{% endblock %}

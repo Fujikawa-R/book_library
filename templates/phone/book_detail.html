@@ -5,7 +5,7 @@
 {% block title %}図書詳細{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/phone/detail.css' %}">
+<link rel="stylesheet" href="{% static 'css/phone/detail.css' %}?v=2">
 {% endblock %}
 
 {% block content %}
@@ -61,7 +61,7 @@
                 <span class="rating-label">評価</span>
                 <span class="rating-star">☆</span>
                 <span class="rating-score">
-                    {{ book.rating|default_if_none:"0" }}/5
+                    {% if book.rating is not None %}{{ book.rating|floatformat:1 }}{% else %}-{% endif %}/5
                 </span>
             </div>
 
@@ -77,9 +77,21 @@
 
                 <h3>自分の口コミ</h3>
 
-                <div class="my-review">
+                {% if error %}
+                    <p class="review-error">{{ error }}</p>
+                {% endif %}
+
+                <div class="my-review" id="my-review-view" {% if error %}hidden{% endif %}>
                     {% if my_review %}
-                        <p>{{ my_review.comment }}</p>
+                        <div class="review-top">
+                            <span class="review-stars">★ {{ my_review.point }}/5</span>
+                            <span class="review-date">{{ my_review.updated_at|date:"Y/m/d" }}</span>
+                        </div>
+                        {% if my_review.comment %}
+                            <p>{{ my_review.comment|linebreaksbr }}</p>
+                        {% else %}
+                            <p class="empty-review">コメントなし</p>
+                        {% endif %}
                     {% else %}
                         <p class="empty-review">
                             まだ口コミを投稿していません
@@ -87,9 +99,41 @@
                     {% endif %}
                 </div>
 
-                <button type="button" class="review-edit-btn">
-                    編集
-                </button>
+                {% if can_review %}
+                    <button type="button" class="review-edit-btn" id="review-edit-open" {% if error %}hidden{% endif %}>
+                        {% if my_review %}編集{% else %}口コミを書く{% endif %}
+                    </button>
+
+                    <form method="post" class="review-form" id="review-form" {% if not error %}hidden{% endif %}>
+                        {% csrf_token %}
+
+                        <span class="data-label">評価点</span>
+                        <div class="star-input">
+                            {% for p in point_choices %}
+                                <input type="radio" name="point" value="{{ p }}" id="point-{{ p }}"
+                                       {% if form_point == p %}checked{% endif %} required>
+                                <label for="point-{{ p }}" title="{{ p }}点">★</label>
+                            {% endfor %}
+                        </div>
+
+                        <label class="data-label" for="review-comment">コメント（任意）</label>
+                        <textarea name="comment" id="review-comment" rows="5" maxlength="1000"
+                                  placeholder="本の感想を書いてください">{{ form_comment }}</textarea>
+
+                        <div class="review-form-actions">
+                            <button type="button" class="review-cancel-btn" id="review-edit-cancel">キャンセル</button>
+                            <button type="submit" name="action" value="save" class="review-save-btn">保存</button>
+                        </div>
+                    </form>
+
+                    {% if my_review %}
+                        <form method="post" class="review-delete-form" id="review-delete-form" {% if error %}hidden{% endif %}
+                              onsubmit="return confirm('口コミを削除しますか？');">
+                            {% csrf_token %}
+                            <button type="submit" name="action" value="delete" class="review-delete-btn">削除</button>
+                        </form>
+                    {% endif %}
+                {% endif %}
 
             </div>
 
@@ -106,15 +150,24 @@
 
                         <div class="review-top">
                             <span class="review-user">
-                                {{ review.user }}
+                                {{ review.reviewer_name }}
                             </span>
 
                             <span class="review-stars">
-                                ★ {{ review.rating }}/5
+                                ★ {{ review.point }}/5
                             </span>
                         </div>
 
-                        <p>{{ review.comment }}</p>
+                        {% if review.comment %}
+                            <p>{{ review.comment|linebreaksbr }}</p>
+                        {% endif %}
+
+                        <div class="review-bottom">
+                            <span class="review-date">{{ review.updated_at|date:"Y/m/d" }}</span>
+                            {% if can_report %}
+                                <a href="{% url 'phone:review_report' review.id %}" class="review-report-link">通報</a>
+                            {% endif %}
+                        </div>
 
                     </article>
 
@@ -135,5 +188,33 @@
     </div>
 
 </main>
+
+<script>
+    // 「編集」で表示とフォームを切り替える
+    (function () {
+        const openBtn = document.getElementById("review-edit-open");
+        const cancelBtn = document.getElementById("review-edit-cancel");
+        if (!openBtn || !cancelBtn) return;
+
+        const form = document.getElementById("review-form");
+        const view = document.getElementById("my-review-view");
+        const deleteForm = document.getElementById("review-delete-form");
+        const error = document.querySelector(".review-error");
+
+        function setEditing(editing) {
+            form.hidden = !editing;
+            view.hidden = editing;
+            openBtn.hidden = editing;
+            if (deleteForm) deleteForm.hidden = editing;
+            if (!editing && error) error.hidden = true;
+        }
+
+        openBtn.addEventListener("click", function () { setEditing(true); });
+        cancelBtn.addEventListener("click", function () {
+            form.reset();
+            setEditing(false);
+        });
+    })();
+</script>
 
 {% endblock %}

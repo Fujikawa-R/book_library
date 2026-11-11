@@ -30,9 +30,12 @@
 
 {% block extra_js %}
 <script>
-const MODE = "{{ mode }}";   // "loan" か "return"
+const MODE = "{{ mode }}";
 
-const CONFIRM_URL = "{% url 'lender:user_auth' %}";   // 確定 → 本人確認
+const CONFIRM_URL = MODE === "loan"
+    ? "{% url 'lender:user_auth' 'loan' %}"
+    : "{% url 'lender:user_auth' 'return' %}";  // 確定 → 本人確認
+
 const BOOK_API    = "{% url 'lender:book_info' 'ISBN' %}";            // 'ISBN' は、後で置き換える目印
 
 const STORAGE_KEY = "selectedBooks_" + MODE;   // 読み取り画面と同じキー(一覧を共有する)
@@ -116,7 +119,7 @@ document.getElementById("isbn_form").onsubmit = (e) => {
   addBook(input.value);
 };
 
-// 「確定」と「カメラで読み取る」で共通の画面遷移
+// 共通の画面遷移
 function goNext(url) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify([...books.values()]));
   location.href = url;

@@ -256,6 +256,145 @@
     padding: 20px 5px;
 }
 
+/* 口コミの日付・通報 */
+.review-date {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.review-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.review-report-link {
+    font-size: 11px;
+    color: #94a3b8;
+    text-decoration: underline;
+}
+
+/* エラー */
+.review-error {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    color: #b91c1c;
+    font-size: 13px;
+}
+
+/* 口コミ入力フォーム */
+.review-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.review-form[hidden],
+.review-delete-form[hidden],
+.review-edit-btn[hidden],
+.my-review[hidden] {
+    display: none;
+}
+
+.review-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.review-form textarea:focus {
+    outline: 2px solid #93c5fd;
+    border-color: #2563eb;
+}
+
+/* 星の入力（DOMは5→1の順。row-reverseで左から1→5に見せる） */
+.star-input {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.star-input input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.star-input label {
+    font-size: 32px;
+    line-height: 1;
+    color: #cbd5e1;
+    cursor: pointer;
+}
+
+.star-input input:checked ~ label,
+.star-input label:hover,
+.star-input label:hover ~ label {
+    color: #eab308;
+}
+
+.star-input input:focus-visible + label {
+    outline: 2px solid #93c5fd;
+    border-radius: 4px;
+}
+
+.review-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.review-form-actions button,
+.review-delete-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.review-save-btn {
+    border: none;
+    background-color: #2563eb;
+    color: white;
+}
+
+.review-save-btn:hover {
+    background-color: #1d4ed8;
+}
+
+.review-cancel-btn {
+    border: 1px solid #cbd5e1;
+    background-color: white;
+    color: #334155;
+}
+
+.review-delete-form {
+    display: flex;
+    margin-top: 8px;
+}
+
+.review-delete-btn {
+    border: 1px solid #fecaca;
+    background-color: white;
+    color: #dc2626;
+}
+
 /* 小さいスマホ */
 @media (max-width: 360px) {
     .detail-container {
