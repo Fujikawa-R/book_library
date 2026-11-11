@@ -24,6 +24,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
  
 from library.models import Book, BookTag, Tag
+from .models import Loan
 
 # TODO: 実装が進んだら、管理者のみ許可する（@staff_member_required など）
 
@@ -433,7 +434,29 @@ def department_list(request):
 
 
 def rental_list(request):
-    return render(request, "manager/rental_list.html")
+    order = request.GET.get("order", "desc")
+    if order not in ("asc", "desc"):
+        order = "desc"
+
+    if order == "asc":
+        ordering = ("loaned_on", "id")      # 古い順
+    else:
+        ordering = ("-loaned_on", "-id")    # 新着順
+
+    loans = (
+        Loan.objects.filter(returned_on__isnull=True)  # 貸出中のみ
+        .select_related("student", "book")
+        .order_by(*ordering)
+    )
+    paginator = Paginator(loans, 20)                   # 1ページ20件
+    page_obj = paginator.get_page(request.GET.get("page"))
+    return render(request, "manager/rental_list.html", {
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "loans": page_obj.object_list,
+        "order": order,
+    })
+
 
 
 def rental_detail(request, rental_id):
