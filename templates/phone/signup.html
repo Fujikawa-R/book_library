@@ -1,0 +1,135 @@
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>yom yom | 新規登録</title>
+    <link rel="stylesheet" href="{% static 'css/phone/login.css' %}">
+</head>
+<body>
+
+<main class="login-page">
+    <div class="login-container">
+
+        <div class="login-header">
+            <h1>yom yom</h1>
+            <p>図書管理システム</p>
+        </div>
+
+        <div class="login-card">
+            <h2>新規登録</h2>
+
+            {% if errors %}
+                <div class="error-message">
+                    {% for error in errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="post" action="{% url 'phone:signup' %}">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="id_email">メールアドレス</label>
+                    <input
+                        type="email"
+                        id="id_email"
+                        name="email"
+                        placeholder="メールアドレスを入力"
+                        value="{{ email }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="id_student_id">学籍番号</label>
+                    <input
+                        type="text"
+                        id="id_student_id"
+                        name="student_id"
+                        placeholder="学籍番号を入力"
+                        value="{{ student_id }}"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="id_password1">パスワード</label>
+                    <input
+                        type="password"
+                        id="id_password1"
+                        name="password1"
+                        placeholder="パスワードを入力"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="id_password2">パスワード再入力</label>
+                    <input
+                        type="password"
+                        id="id_password2"
+                        name="password2"
+                        placeholder="パスワードを再入力"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="id_department">学科</label>
+                    <select
+                        id="id_department"
+                        name="department"
+                        required
+                    >
+                        <option value="">学科を選択してください</option>
+
+                        {% for department in departments %}
+                            <option
+                                value="{{ department.id }}"
+                                {% if department.id|stringformat:"s" == selected_department %}
+                                    selected
+                                {% endif %}
+                            >
+                                {{ department.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="id_admission_year">入学年</label>
+                    <input
+                        type="number"
+                        id="id_admission_year"
+                        name="admission_year"
+                        placeholder="2026"
+                        min="2000"
+                        max="2100"
+                        value="{{ admission_year }}"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="login-button">
+                    新規登録
+                </button>
+            </form>
+
+            <div class="register-link">
+                <p>すでにアカウントをお持ちの方</p>
+                <a href="{% url 'phone:login' %}" class="register-button">
+                    ログインはこちら
+                </a>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+</body>
+</html>
