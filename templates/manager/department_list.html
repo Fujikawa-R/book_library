@@ -1,1 +1,364 @@
 {% extends "manager_base.html" %}
+
+{% block title %}学科管理{% endblock %}
+
+{% block style %}
+<style>
+  .dept-card {
+    max-width: 760px;
+  }
+  .dept-row {
+    background-color: #f1f3f5;
+    border: 2px solid transparent;
+    border-radius: .5rem;
+    padding: .375rem;
+    transition: opacity .2s, background-color .2s, border-color .2s;
+  }
+  .dept-row .form-control,
+  .dept-row .input-group-text {
+    background-color: transparent;
+    border: none;
+  }
+  /* 閲覧モード：入力欄をただの文字に見せる */
+  .dept-row .form-control[readonly] {
+    pointer-events: none;
+    color: #212529;
+  }
+  .dept-row .col-years {
+    border-left: 1px solid #ced4da;
+  }
+  /* 編集モード：行を青枠で囲み、入力欄を枠付きの白いボックスにする */
+  .editing .dept-row:not(.is-deleted) {
+    background-color: #e7f1ff;
+    border-color: #6ea8fe;
+  }
+  .editing .dept-row .form-control:not([readonly]),
+  .dept-row.is-new .form-control {
+    background-color: #fff;
+    border: 1px solid #adb5bd;
+    border-radius: .375rem !important;
+  }
+  .editing .dept-row .form-control:not([readonly]):hover,
+  .dept-row.is-new .form-control:hover {
+    border-color: #6c757d;
+  }
+  .dept-row .form-control:focus {
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 .25rem rgba(13, 110, 253, .25);
+  }
+  /* 編集中は区切り線の代わりに入力欄どうしの間をあける */
+  .editing .dept-row:not(.is-deleted) .col-years,
+  .dept-row.is-new .col-years {
+    border-left: none;
+    padding-left: .5rem;
+  }
+  /* 新しく追加した行 */
+  .dept-row.is-new {
+    background-color: #fff;
+    border: 2px dashed #86b7fe;
+  }
+  /* 削除予定の行 */
+  .dept-row.is-deleted {
+    opacity: .45;
+    background-color: #f8d7da;
+  }
+  .dept-row.is-deleted .form-control {
+    text-decoration: line-through;
+  }
+  .btn-trash {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+  .trash-locked {
+    display: inline-block;
+    cursor: not-allowed;
+  }
+  .trash-space {
+    width: 42px;
+    flex-shrink: 0;
+  }
+  /* 閲覧モード（編集前で新規行もないとき）：ゴミ箱と右側の余白をなくし、
+     リストと追加ボタンを見出し・編集ボタンの幅いっぱいに広げる */
+  #dept-form.view-mode .btn-trash.existing,
+  #dept-form.view-mode .trash-space {
+    display: none !important;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="dept-card mx-auto">
+
+    <!-- タイトルと編集ボタン -->
+    <div class="d-flex align-items-center mb-4">
+      <h1 class="h4 mb-0"><i class="bi bi-mortarboard me-2"></i>学科管理</h1>
+      <span class="badge text-bg-secondary ms-2">{{ departments|length }}件</span>
+      {% if departments %}
+        <button type="button" id="edit-toggle" class="btn btn-outline-primary btn-sm ms-auto">
+          <i class="bi bi-pencil-square me-1"></i>編集
+        </button>
+      {% endif %}
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="閉じる"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" id="dept-form" class="view-mode">
+      {% csrf_token %}
+
+      <!-- 見出し -->
+      <div class="d-flex gap-2 px-1 mb-2 small text-muted fw-semibold">
+        <div class="row g-0 flex-grow-1">
+          <div class="col text-center">学科名</div>
+          <div class="col-3 text-center">年数</div>
+        </div>
+        <div class="trash-space"></div>
+      </div>
+
+      <div class="dept-list" id="dept-list">
+        <!-- 既存の学科 -->
+        {% for dept in departments %}
+          <div class="d-flex align-items-center gap-2 mb-3 dept-item">
+            <input type="hidden" name="department_ids" value="{{ dept.id }}">
+            <div class="dept-row row g-0 align-items-center flex-grow-1">
+              <div class="col">
+                <input type="text" name="name_{{ dept.id }}" value="{{ dept.name }}"
+                       class="form-control text-center py-2 editable" maxlength="50" required readonly
+                       aria-label="学科名">
+              </div>
+              <div class="col-3 col-years">
+                <div class="input-group">
+                  <input type="number" name="course_years_{{ dept.id }}" value="{{ dept.course_years }}"
+                         class="form-control text-center py-2 editable" min="1" max="6" required readonly
+                         aria-label="年数">
+                  <span class="input-group-text pe-3">年</span>
+                </div>
+              </div>
+            </div>
+            {% if dept.active_students %}
+              <!-- 在籍中の生徒がいる学科は削除できない（無効なボタンはtitleが出ないのでspanで包む） -->
+              <span class="btn-trash existing trash-locked"
+                    title="在籍中の生徒が{{ dept.active_students }}人いるため削除できません">
+                <button type="button" class="btn btn-outline-secondary w-100 h-100" disabled
+                        aria-label="削除できません（在籍中の生徒{{ dept.active_students }}人）">
+                  <i class="bi bi-lock"></i>
+                </button>
+              </span>
+            {% else %}
+              <button type="button" class="btn btn-outline-danger btn-trash existing js-delete"
+                      data-id="{{ dept.id }}" title="削除">
+                <i class="bi bi-trash3"></i>
+              </button>
+            {% endif %}
+          </div>
+        {% empty %}
+          <div class="text-center text-muted py-4" id="empty-message">登録されている学科はありません。</div>
+        {% endfor %}
+      </div>
+
+      <!-- 削除する学科のIDがここに入る -->
+      <div id="delete-inputs"></div>
+
+      <!-- 追加ボタン -->
+      <div class="d-flex gap-2">
+        <button type="button" id="add-row" class="btn btn-outline-success flex-grow-1 py-2">
+          <i class="bi bi-plus-lg me-1"></i>学科を追加
+        </button>
+        <div class="trash-space"></div>
+      </div>
+
+      <!-- 保存ボタン（変更があるときだけ表示） -->
+      <div id="save-bar" class="d-none border-top mt-4 pt-3">
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" id="cancel-btn" class="btn btn-outline-secondary px-4">キャンセル</button>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-lg me-1"></i>保存
+          </button>
+        </div>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- 新規行のひな形 -->
+<template id="new-row-template">
+  <div class="d-flex align-items-center gap-2 mb-3 dept-item">
+    <div class="dept-row is-new row g-0 align-items-center flex-grow-1">
+      <div class="col">
+        <input type="text" name="new_name" class="form-control text-center py-2"
+               placeholder="学科名" maxlength="50" required aria-label="新しい学科名">
+      </div>
+      <div class="col-3 col-years">
+        <div class="input-group">
+          <input type="number" name="new_course_years" class="form-control text-center py-2"
+                 placeholder="年数" min="1" max="6" required aria-label="年数">
+          <span class="input-group-text pe-3">年</span>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-trash js-remove-new" title="取り消し">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+</template>
+
+<!-- 削除確認モーダル -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">学科の削除</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">次の学科を削除します。よろしいですか？</p>
+        <ul id="delete-name-list" class="mb-0 fw-bold"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">戻る</button>
+        <button type="button" id="confirm-save" class="btn btn-danger">削除して保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form       = document.getElementById('dept-form');
+  const list       = document.getElementById('dept-list');
+  const editBtn    = document.getElementById('edit-toggle');
+  const addBtn     = document.getElementById('add-row');
+  const saveBar    = document.getElementById('save-bar');
+  const cancelBtn  = document.getElementById('cancel-btn');
+  const deleteBox  = document.getElementById('delete-inputs');
+  const template   = document.getElementById('new-row-template');
+  const modalEl    = document.getElementById('deleteModal');
+  const modal      = new bootstrap.Modal(modalEl);
+
+  let editing = false;
+
+  // 保存バーは「編集中」か「新規行がある」ときに表示。
+  // それ以外は閲覧モードとして、リストを横幅いっぱいに広げる
+  function updateSaveBar() {
+    const hasNew = list.querySelector('.is-new') !== null;
+    saveBar.classList.toggle('d-none', !(editing || hasNew));
+    form.classList.toggle('view-mode', !(editing || hasNew));
+  }
+
+  // 編集モードの切り替え
+  function setEditing(on) {
+    editing = on;
+    list.classList.toggle('editing', on);
+    list.querySelectorAll('.editable').forEach(function (input) {
+      if (!input.closest('.is-deleted')) input.readOnly = !on;
+    });
+    if (editBtn) {
+      editBtn.innerHTML = on
+        ? '<i class="bi bi-x-lg me-1"></i>編集をやめる'
+        : '<i class="bi bi-pencil-square me-1"></i>編集';
+      editBtn.classList.toggle('btn-outline-primary', !on);
+      editBtn.classList.toggle('btn-outline-secondary', on);
+    }
+    updateSaveBar();
+  }
+
+  if (editBtn) {
+    editBtn.addEventListener('click', function () {
+      if (editing) {
+        location.reload();   // 編集内容を破棄して元に戻す
+      } else {
+        setEditing(true);
+      }
+    });
+  }
+
+  // キャンセル：変更をすべて破棄
+  cancelBtn.addEventListener('click', function () {
+    location.reload();
+  });
+
+  // 追加：空の入力行を出す
+  addBtn.addEventListener('click', function () {
+    const empty = document.getElementById('empty-message');
+    if (empty) empty.remove();
+    const row = template.content.firstElementChild.cloneNode(true);
+    list.appendChild(row);
+    row.querySelector('input[name="new_name"]').focus();
+    updateSaveBar();
+  });
+
+  // 行内のボタン
+  list.addEventListener('click', function (e) {
+    // 新規行の取り消し
+    const removeBtn = e.target.closest('.js-remove-new');
+    if (removeBtn) {
+      removeBtn.closest('.dept-item').remove();
+      updateSaveBar();
+      return;
+    }
+
+    // 既存行の削除（もう一度押すと元に戻す）
+    const delBtn = e.target.closest('.js-delete');
+    if (delBtn) {
+      const id   = delBtn.dataset.id;
+      const item = delBtn.closest('.dept-item');
+      const row  = item.querySelector('.dept-row');
+      const deleted = row.classList.toggle('is-deleted');
+
+      item.querySelectorAll('.editable').forEach(function (input) {
+        input.readOnly = deleted;
+        input.required = !deleted;
+      });
+
+      if (deleted) {
+        const hidden = document.createElement('input');
+        hidden.type  = 'hidden';
+        hidden.name  = 'delete_ids';
+        hidden.value = id;
+        hidden.id    = 'delete-' + id;
+        deleteBox.appendChild(hidden);
+        delBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i>';
+        delBtn.title = '削除を取り消す';
+        delBtn.classList.replace('btn-outline-danger', 'btn-outline-secondary');
+      } else {
+        document.getElementById('delete-' + id).remove();
+        delBtn.innerHTML = '<i class="bi bi-trash3"></i>';
+        delBtn.title = '削除';
+        delBtn.classList.replace('btn-outline-secondary', 'btn-outline-danger');
+      }
+    }
+  });
+
+  // 保存：削除がある場合は確認してから送信
+  form.addEventListener('submit', function (e) {
+    const deletedRows = list.querySelectorAll('.is-deleted');
+    if (deletedRows.length === 0) return;   // 削除なし→そのまま送信
+
+    e.preventDefault();
+    const ul = document.getElementById('delete-name-list');
+    ul.innerHTML = '';
+    deletedRows.forEach(function (row) {
+      const li = document.createElement('li');
+      li.textContent = row.querySelector('input[type="text"]').value;
+      ul.appendChild(li);
+    });
+    modal.show();
+  });
+
+  document.getElementById('confirm-save').addEventListener('click', function () {
+    modal.hide();
+    form.submit();   // submitイベントを通さずに送信
+  });
+});
+</script>
+{% endblock %}

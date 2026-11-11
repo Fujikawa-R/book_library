@@ -4,8 +4,10 @@ from django.core.paginator import Paginator
 from django.db.models import Count, F, Q
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
+from django.contrib import messages
+from accounts.models import Department
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -296,8 +298,138 @@ def user_detail(request, user_id):
     return render(request, "manager/user_detail.html", {"user_id": user_id})
 
 
+
+DEPT_YEARS_MIN = 1
+DEPT_YEARS_MAX = 6
+# 在籍中の生徒＝アカウントが有効な生徒
+ACTIVE_STUDENTS = Count("student", filter=Q(student__user__is_active=True))
+
+
+def _parse_years(raw):
+    try:
+        years = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return years if DEPT_YEARS_MIN <= years <= DEPT_YEARS_MAX else None
+
+
+def _save_departments(post):
+    """学科の更新・削除・追加をまとめて検証する。
+    エラーがなければ保存して (エラーなし, 復元した学科名) を、あれば (エラー, []) を返す。"""
+    errors = []
+    name_max = Department._meta.get_field("name").max_length
+    delete_ids = set(post.getlist("delete_ids"))
+
+    def check_name(name, label):
+        if not name:
+            errors.append(f"{label}: 学科名を入力してください。")
+        elif len(name) > name_max:
+            errors.append(f"{label}: 学科名は{name_max}文字以内にしてください。")
+
+    def years_error(label):
+        errors.append(f"{label}: 年数は{DEPT_YEARS_MIN}〜{DEPT_YEARS_MAX}の数字にしてください。")
+
+    # 既存の学科
+    submitted = {
+        str(d.pk): d
+        for d in Department.objects.filter(
+            pk__in=post.getlist("department_ids"), is_active=True
+        ).annotate(active_students=ACTIVE_STUDENTS)
+    }
+    to_delete, to_update = [], []
+    for dept_id, dept in submitted.items():
+        if dept_id in delete_ids:
+            if dept.active_students:
+                errors.append(
+                    f"「{dept.name}」には在籍中の生徒が{dept.active_students}人いるため削除できません。"
+                )
+            to_delete.append(dept)
+            continue
+        name = post.get(f"name_{dept_id}", dept.name).strip()
+        years = _parse_years(post.get(f"course_years_{dept_id}", dept.course_years))
+        check_name(name, f"「{dept.name}」")
+        if years is None:
+            years_error(f"「{dept.name}」")
+        to_update.append((dept, name, years))
+
+    # 新しい学科（学科名も年数も空の行は無視する）
+    to_create = []
+    for n, (name, raw_years) in enumerate(
+        zip(post.getlist("new_name"), post.getlist("new_course_years")), start=1
+    ):
+        name = name.strip()
+        if not name and not raw_years:
+            continue
+        label = f"追加{n}行目"
+        years = _parse_years(raw_years)
+        check_name(name, label)
+        if years is None:
+            years_error(label)
+        to_create.append((name, years))
+
+    # 学科名の重複チェック
+    kept_names = [name for _, name, _ in to_update] + [name for name, _ in to_create]
+    for name in {n for n in kept_names if kept_names.count(n) > 1}:
+        errors.append(f"「{name}」が複数あります。学科名は重複できません。")
+    others = Department.objects.filter(name__in=kept_names).exclude(
+        pk__in=[d.pk for d in to_delete] + [d.pk for d, _, _ in to_update]
+    )
+    inactive = {d.name: d for d in others if not d.is_active}
+    for d in others:
+        if d.is_active:
+            errors.append(f"「{d.name}」はすでに登録されています。")
+    for dept, name, _ in to_update:
+        if name != dept.name and name in inactive:
+            errors.append(
+                f"「{name}」は削除済みの学科です。名前を変えずに「学科を追加」から追加すると復元できます。"
+            )
+
+    if errors:
+        return errors, []
+
+    restored = []
+    with transaction.atomic():
+        for dept in to_delete:
+            dept.is_active = False   # 論理削除
+            dept.save(update_fields=["is_active"])
+        for dept, name, years in to_update:
+            dept.name, dept.course_years = name, years
+            dept.save(update_fields=["name", "course_years"])
+        for name, years in to_create:
+            old = inactive.get(name)
+            if old:
+                # 削除済みの同名学科があれば、新しく作らずに復元する（生徒との紐づけも戻る）
+                old.is_active, old.course_years = True, years
+                old.save(update_fields=["is_active", "course_years"])
+                restored.append(name)
+            else:
+                Department.objects.create(name=name, course_years=years)
+    return [], restored
+
+
 def department_list(request):
-    return render(request, "manager/department_list.html")
+    if request.method == "POST":
+        try:
+            errors, restored = _save_departments(request.POST)
+        except IntegrityError:
+            # 学科名の入れ替えなどで一時的に重複した場合
+            errors, restored = ["学科名が重複したため保存できませんでした。"], []
+        if errors:
+            for e in errors:
+                messages.error(request, e)
+            messages.error(request, "変更は保存されていません。")
+        else:
+            messages.success(request, "学科を保存しました。")
+            for name in restored:
+                messages.info(request, f"削除済みだった「{name}」を復元しました。")
+        return redirect("manager:department_list")
+
+    departments = (
+        Department.objects.filter(is_active=True)
+        .annotate(active_students=ACTIVE_STUDENTS)
+        .order_by("id")
+    )
+    return render(request, "manager/department_list.html", {"departments": departments})
 
 
 def rental_list(request):
