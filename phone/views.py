@@ -144,21 +144,74 @@ def book_search(request):
         "sort": sort,
     })
 
+@login_required
 def book_detail(request, isbn):
+    """図書詳細。自分の口コミの投稿・編集・削除もこの画面で行う（POST）。"""
     book = get_object_or_404(
         Book,
         isbn=isbn,
         is_suspended=False
     )
 
+    # 生徒は生徒として、管理者は無条件で口コミを書ける。それ以外（貸借PCなど）は閲覧のみ
+    student = Student.objects.filter(user=request.user).first()
+    is_admin = request.user.role == User.Role.ADMIN or request.user.is_superuser
+
+    if student is not None:
+        author = {"student": student}
+    elif is_admin:
+        author = {"admin_user": request.user}
+    else:
+        author = None
+
+    # 削除済み（無効化）を含めて自分の口コミを取得する（1人1冊1件の制約があるため）
+    my_review = None
+    if author is not None:
+        my_review = Review.objects.filter(book=book, **author).first()
+
+    error = None
+    form_point = my_review.point if my_review and my_review.is_active else ""
+    form_comment = my_review.comment if my_review and my_review.is_active else ""
+
+    if request.method == "POST":
+        if author is None:
+            error = "このアカウントでは口コミを投稿できません。"
+
+        elif request.POST.get("action") == "delete":
+            if my_review is not None and my_review.is_active:
+                my_review.is_active = False
+                my_review.save(update_fields=["is_active", "updated_at"])
+            return redirect("phone:book_detail", isbn=book.isbn)
+
+        else:
+            point = request.POST.get("point", "")
+            comment = request.POST.get("comment", "").strip()
+            form_point, form_comment = point, comment
+
+            if not point.isdigit() or not 1 <= int(point) <= 5:
+                error = "評価点を1〜5で選択してください。"
+            elif len(comment) > 1000:
+                error = "コメントは1000文字以内で入力してください。"
+            else:
+                if my_review is None:
+                    my_review = Review(book=book, **author)
+                my_review.point = int(point)
+                my_review.comment = comment
+                my_review.is_active = True
+                my_review.save()
+                return redirect("phone:book_detail", isbn=book.isbn)
+
     reviews = Review.objects.filter(
         book=book,
         is_active=True
-    ).select_related("student")
+    ).select_related("student__department").order_by("-updated_at")
 
     book.rating = reviews.aggregate(
         average=Avg("point")
     )["average"]
+
+    # 自分の口コミは「その他の口コミ」に出さない
+    other_reviews = reviews.exclude(**author) if author else reviews
 
     rental_count = Rental.objects.filter(
         book=book,
@@ -170,8 +223,14 @@ def book_detail(request, isbn):
 
     return render(request, 'phone/book_detail.html', {
         'book': book,
-        'my_review': None,
-        'reviews': reviews,
+        'can_review': author is not None,
+        'can_report': student is not None,  # 通報は生徒のみ（Report.student が必須のため）
+        'my_review': my_review if my_review and my_review.is_active else None,
+        'reviews': other_reviews,
+        'error': error,
+        'form_point': str(form_point),
+        'form_comment': form_comment,
+        'point_choices': ["5", "4", "3", "2", "1"],
     })
 
 def signup(request):
