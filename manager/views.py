@@ -1,8 +1,10 @@
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Q
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from accounts.models import Department
@@ -433,28 +435,52 @@ def department_list(request):
     return render(request, "manager/department_list.html", {"departments": departments})
 
 
+SOON_DAYS = 3  # 返却日まで何日以内を「期限間近」とするか（運用に合わせて変更）
+LOAN_STATUSES = ("overdue", "soon", "ok")
+
+
 def rental_list(request):
     order = request.GET.get("order", "desc")
     if order not in ("asc", "desc"):
         order = "desc"
+
+    status = request.GET.get("status", "")
+    if status not in LOAN_STATUSES:
+        status = ""  # 想定外の値は「すべて」に戻す
 
     if order == "asc":
         ordering = ("loaned_on", "id")      # 古い順
     else:
         ordering = ("-loaned_on", "-id")    # 新着順
 
+    today = timezone.localdate()
+    soon_limit = today + timedelta(days=SOON_DAYS)
+
     loans = (
         Loan.objects.filter(returned_on__isnull=True)  # 貸出中のみ
         .select_related("student", "book")
-        .order_by(*ordering)
     )
+
+    # 状態での絞り込み（アイコンの判定と同じ条件）
+    if status == "overdue":
+        loans = loans.filter(due_on__lt=today)
+    elif status == "soon":
+        loans = loans.filter(due_on__gte=today, due_on__lte=soon_limit)
+    elif status == "ok":
+        loans = loans.filter(due_on__gt=soon_limit)
+
+    loans = loans.order_by(*ordering)
+
     paginator = Paginator(loans, 20)                   # 1ページ20件
     page_obj = paginator.get_page(request.GET.get("page"))
+
+    # loan.status は Loan モデルのプロパティをそのまま使う（ここでは代入しない）
     return render(request, "manager/rental_list.html", {
         "page_obj": page_obj,
         "paginator": paginator,
         "loans": page_obj.object_list,
         "order": order,
+        "status": status,
     })
 
 
