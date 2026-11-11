@@ -1,71 +1,165 @@
 {% extends "manager_base.html" %}
 
-{% block title %}貸出状況{% endblock %}
+{% block title %}貸出状況{% endblock title %}
 
-{% block extra_css %}
+{% block style %}
 <style>
-  .loan-page { max-width: 700px; margin: 0 auto; padding: 24px 20px; }
-  .toolbar { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
-  .btn { background: #ddd; border: none; padding: 4px 12px; font-size: 12px; color: #000; text-decoration: none; cursor: pointer; }
-  .btn.disabled { opacity: .4; pointer-events: none; }
-  .panel { background: #ddd; padding: 10px; }
-  .panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
-  .sort-link { color: #000; text-decoration: none; cursor: pointer; }
-  .sort-link:hover { text-decoration: underline; }
-  .legend { background: #fff; padding: 4px 12px; display: flex; gap: 14px; align-items: center; }
-  .row { background: #fff; margin-bottom: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; min-height: 24px; color: inherit; text-decoration: none; }
-  .row:hover { background: #f3f3f3; }
-  .row .title { font-size: 18px; }
-  .row .dates { margin-left: auto; font-size: 10px; color: #555; line-height: 1.4; }
-  /* ステータスアイコン */
-  .icon { display: inline-block; width: 16px; height: 16px; text-align: center; font-size: 11px; line-height: 16px; font-weight: bold; }
-  .icon.overdue { background: #e53935; color: #fff; border-radius: 50%; }
-  .icon.soon { color: #f5c400; font-size: 16px; }
-  .icon.ok { background: #2ecc40; border-radius: 50%; width: 12px; height: 12px; }
-  .empty { background: #fff; padding: 16px; text-align: center; color: #777; }
+    body {
+        background-color: #ffffff;
+    }
+
+    .page-container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 0 15px;
+    }
+
+    .page-title {
+        font-weight: 700;
+        font-size: 1.5rem;
+    }
+
+    .loan-list .list-group-item:hover {
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    .loan-title {
+        color: var(--bs-body-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .loan-title:hover {
+        color: var(--bs-primary);
+        text-decoration: underline;
+    }
+
+    .status-icon {
+        width: 1.5rem;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .loan-dates {
+        font-size: 0.85rem;
+        color: var(--bs-secondary-color);
+        white-space: nowrap;
+        line-height: 1.5;
+    }
 </style>
-{% endblock %}
+{% endblock style %}
+
 
 {% block content %}
-<div class="loan-page">
-  <h2>貸出状況一覧</h2>
+<div class="page-container">
 
-  <div class="toolbar">
-    <a class="btn" href="{% url 'manager:rental_list' %}?order={{ order }}&page={{ page_obj.number }}">更新</a>
-    <a class="btn {% if not page_obj.has_previous %}disabled{% endif %}"
-       href="{% if page_obj.has_previous %}?order={{ order }}&page={{ page_obj.previous_page_number }}{% else %}#{% endif %}">前へ</a>
-    <span>{{ page_obj.number }} / {{ paginator.num_pages }}</span>
-    <a class="btn {% if not page_obj.has_next %}disabled{% endif %}"
-       href="{% if page_obj.has_next %}?order={{ order }}&page={{ page_obj.next_page_number }}{% else %}#{% endif %}">次へ</a>
-  </div>
-
-  <div class="panel">
-    <div class="panel-top">
-      {% if order == "asc" %}
-        <a class="sort-link" href="?order=desc">古い順↑(押すと新着順)</a>
-      {% else %}
-        <a class="sort-link" href="?order=asc">新着順↓(押すと古い順)</a>
-      {% endif %}
-      <div class="legend">
-        <span><span class="icon overdue">!</span> 期限切れ</span>
-        <span><span class="icon soon">▲</span> 期限間近</span>
-        <span><span class="icon ok"></span> 期限前</span>
-      </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title mb-0">
+            <i class="bi bi-journal-bookmark me-2"></i>貸出状況一覧
+        </h1>
+        <a href="?order={{ order }}&status={{ status }}&page={{ page_obj.number }}" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise me-1"></i>更新
+        </a>
     </div>
 
-    {% for loan in loans %}
-      <a class="row" href="{% url 'manager:rental_detail' rental_id=loan.id %}">
-        <span class="icon {{ loan.status }}">{% if loan.status == "overdue" %}!{% elif loan.status == "soon" %}▲{% endif %}</span>
-        <span class="title">「{{ loan.book.title }}」</span>
-        <span>{{ loan.student.student_no }}</span>
-        <span class="dates">
-          貸日：{{ loan.loaned_on|date:"Y/n/j" }}<br>
-          返却日：{{ loan.due_on|date:"Y/n/j" }}
-        </span>
-      </a>
-    {% empty %}
-      <div class="empty">貸出中の本はありません</div>
-    {% endfor %}
-  </div>
+    <!-- 貸出状況一覧 -->
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <span class="text-body-secondary small">{{ page_obj.paginator.count }} 件</span>
+
+            <!-- 状態で絞り込み（アイコンの意味の凡例も兼ねる） -->
+            <div class="btn-group btn-group-sm" role="group" aria-label="状態で絞り込み">
+                <a href="?order={{ order }}"
+                   class="btn btn-outline-secondary {% if not status %}active{% endif %}"
+                   {% if not status %}aria-current="true"{% endif %}>すべて</a>
+                <a href="?order={{ order }}&status=overdue"
+                   class="btn btn-outline-secondary {% if status == 'overdue' %}active{% endif %}"
+                   {% if status == 'overdue' %}aria-current="true"{% endif %}>
+                    <i class="bi bi-exclamation-circle-fill text-danger"></i> 期限切れ
+                </a>
+                <a href="?order={{ order }}&status=soon"
+                   class="btn btn-outline-secondary {% if status == 'soon' %}active{% endif %}"
+                   {% if status == 'soon' %}aria-current="true"{% endif %}>
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> 期限間近
+                </a>
+                <a href="?order={{ order }}&status=ok"
+                   class="btn btn-outline-secondary {% if status == 'ok' %}active{% endif %}"
+                   {% if status == 'ok' %}aria-current="true"{% endif %}>
+                    <i class="bi bi-circle-fill text-success"></i> 期限前
+                </a>
+            </div>
+
+            {% if order == "asc" %}
+                <a href="?order=desc&status={{ status }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-sort-up me-1"></i>古い順
+                </a>
+            {% else %}
+                <a href="?order=asc&status={{ status }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-sort-down me-1"></i>新着順
+                </a>
+            {% endif %}
+        </div>
+
+        <ul class="list-group list-group-flush loan-list">
+            {% for loan in page_obj %}
+                <li class="list-group-item d-flex align-items-center gap-3 py-3">
+                    <span class="status-icon">
+                        {% if loan.status == "overdue" %}
+                            <i class="bi bi-exclamation-circle-fill text-danger fs-5" title="期限切れ"></i>
+                        {% elif loan.status == "soon" %}
+                            <i class="bi bi-exclamation-triangle-fill text-warning fs-5" title="期限間近"></i>
+                        {% else %}
+                            <i class="bi bi-circle-fill text-success" title="期限前"></i>
+                        {% endif %}
+                    </span>
+
+                    <div class="min-w-0 flex-grow-1">
+                        <a href="{% url 'manager:rental_detail' rental_id=loan.id %}"
+                           class="loan-title fs-5 text-break">「{{ loan.book.title }}」</a>
+                        <div class="small text-body-secondary">
+                            学籍番号 {{ loan.student.student_no }}
+                        </div>
+                    </div>
+
+                    <div class="loan-dates text-end">
+                        貸出日：{{ loan.loaned_on|date:"Y/n/j" }}<br>
+                        返却日：{{ loan.due_on|date:"Y/n/j" }}
+                    </div>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-center text-body-secondary py-5">
+                    <i class="bi bi-journal-check fs-2 d-block mb-2"></i>
+                    {% if status %}該当する貸出がありません{% else %}貸出中の本はありません{% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+        <!-- ページネーション -->
+        <div class="card-footer bg-white py-3">
+            <nav aria-label="貸出状況ページ">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}
+                            <a class="page-link" href="?order={{ order }}&status={{ status }}&page={{ page_obj.previous_page_number }}">&laquo; 前へ</a>
+                        {% else %}
+                            <span class="page-link">&laquo; 前へ</span>
+                        {% endif %}
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}
+                            <a class="page-link" href="?order={{ order }}&status={{ status }}&page={{ page_obj.next_page_number }}">次へ &raquo;</a>
+                        {% else %}
+                            <span class="page-link">次へ &raquo;</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
+    </div>
 </div>
-{% endblock %}
+{% endblock content %}
