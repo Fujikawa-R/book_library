@@ -5,7 +5,7 @@
 {% block title %}図書詳細{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/phone/detail.css' %}?v=2">
+<link rel="stylesheet" href="{% static 'css/phone/detail.css' %}?v=5">
 {% endblock %}
 
 {% block content %}
@@ -92,6 +92,13 @@
                         {% else %}
                             <p class="empty-review">コメントなし</p>
                         {% endif %}
+                        {% with tags=my_review.tags.all %}
+                            {% if tags %}
+                                <ul class="review-tags">
+                                    {% for tag in tags %}<li>#{{ tag.name }}</li>{% endfor %}
+                                </ul>
+                            {% endif %}
+                        {% endwith %}
                     {% else %}
                         <p class="empty-review">
                             まだ口コミを投稿していません
@@ -119,6 +126,19 @@
                         <label class="data-label" for="review-comment">コメント（任意）</label>
                         <textarea name="comment" id="review-comment" rows="5" maxlength="1000"
                                   placeholder="本の感想を書いてください">{{ form_comment }}</textarea>
+
+                        <span class="data-label">タグ（任意・{{ review_tag_limit }}個まで）</span>
+                        {% if tag_choices %}
+                            <div class="tag-input">
+                                {% for tag in tag_choices %}
+                                    <input type="checkbox" name="tags" value="{{ tag.pk }}" id="tag-{{ tag.pk }}"
+                                           {% if tag.pk|stringformat:"s" in form_tag_ids %}checked{% endif %}>
+                                    <label for="tag-{{ tag.pk }}">#{{ tag.name }}</label>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <input type="text" name="new_tags" class="new-tag-input" value="{{ form_new_tags }}"
+                               placeholder="新しいタグ（「,」や空白で区切る）" aria-label="新しいタグ">
 
                         <div class="review-form-actions">
                             <button type="button" class="review-cancel-btn" id="review-edit-cancel">キャンセル</button>
@@ -160,6 +180,12 @@
 
                         {% if review.comment %}
                             <p>{{ review.comment|linebreaksbr }}</p>
+                        {% endif %}
+
+                        {% if review.tags.all %}
+                            <ul class="review-tags">
+                                {% for tag in review.tags.all %}<li>#{{ tag.name }}</li>{% endfor %}
+                            </ul>
                         {% endif %}
 
                         <div class="review-bottom">
