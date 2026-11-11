@@ -1,3 +1,5 @@
+import re
+
 from django.http import Http404
 from django.shortcuts import redirect, render, get_object_or_404
 from django.db.models import Q, Avg
@@ -7,7 +9,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from accounts.models import User
-from library.models import Book, Rental, Review
+from library.models import Book, Rental, Review, Tag
 from accounts.models import Student, Department
 
 
@@ -143,6 +145,10 @@ def book_search(request):
         "sort": sort,
     })
 
+REVIEW_TAG_LIMIT = 5  # 1件の口コミに付けられるタグの上限
+TAG_NAME_MAX_LENGTH = Tag._meta.get_field("name").max_length
+
+
 @login_required
 def book_detail(request, isbn):
     """図書詳細。自分の口コミの投稿・編集・削除もこの画面で行う（POST）。"""
@@ -171,6 +177,11 @@ def book_detail(request, isbn):
     error = None
     form_point = my_review.point if my_review and my_review.is_active else ""
     form_comment = my_review.comment if my_review and my_review.is_active else ""
+    form_tag_ids = (
+        [str(pk) for pk in my_review.tags.values_list("pk", flat=True)]
+        if my_review and my_review.is_active else []
+    )
+    form_new_tags = ""
 
     if request.method == "POST":
         if author is None:
@@ -187,23 +198,42 @@ def book_detail(request, isbn):
             comment = request.POST.get("comment", "").strip()
             form_point, form_comment = point, comment
 
+            # タグ：既存タグはチェックボックス、新しいタグは「,」「、」や空白区切りで入力
+            form_tag_ids = [t for t in request.POST.getlist("tags") if t.isdigit()]
+            form_new_tags = request.POST.get("new_tags", "").strip()
+            selected_tags = list(Tag.objects.filter(pk__in=form_tag_ids))
+            new_tag_names = list(dict.fromkeys(
+                name for name in re.split(r"[,、，\s]+", form_new_tags) if name
+            ))
+            tag_count = len({t.name for t in selected_tags} | set(new_tag_names))
+
             if not point.isdigit() or not 1 <= int(point) <= 5:
                 error = "評価点を1〜5で選択してください。"
             elif len(comment) > 1000:
                 error = "コメントは1000文字以内で入力してください。"
+            elif any(len(name) > TAG_NAME_MAX_LENGTH for name in new_tag_names):
+                error = f"タグは1つ{TAG_NAME_MAX_LENGTH}文字以内で入力してください。"
+            elif tag_count > REVIEW_TAG_LIMIT:
+                error = f"タグは{REVIEW_TAG_LIMIT}個まで付けられます。"
             else:
-                if my_review is None:
-                    my_review = Review(book=book, **author)
-                my_review.point = int(point)
-                my_review.comment = comment
-                my_review.is_active = True
-                my_review.save()
+                with transaction.atomic():
+                    if my_review is None:
+                        my_review = Review(book=book, **author)
+                    my_review.point = int(point)
+                    my_review.comment = comment
+                    my_review.is_active = True
+                    my_review.save()
+
+                    for name in new_tag_names:
+                        tag, _ = Tag.objects.get_or_create(name=name)
+                        selected_tags.append(tag)
+                    my_review.tags.set(selected_tags)
                 return redirect("phone:book_detail", isbn=book.isbn)
 
     reviews = Review.objects.filter(
         book=book,
         is_active=True
-    ).select_related("student__department").order_by("-updated_at")
+    ).select_related("student__department").prefetch_related("tags").order_by("-updated_at")
 
     book.rating = reviews.aggregate(
         average=Avg("point")
@@ -230,6 +260,10 @@ def book_detail(request, isbn):
         'form_point': str(form_point),
         'form_comment': form_comment,
         'point_choices': ["5", "4", "3", "2", "1"],
+        'tag_choices': Tag.objects.order_by("name"),
+        'form_tag_ids': form_tag_ids,
+        'form_new_tags': form_new_tags,
+        'review_tag_limit': REVIEW_TAG_LIMIT,
     })
 
 
