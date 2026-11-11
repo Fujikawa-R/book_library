@@ -1,1 +1,71 @@
 {% extends "admin_base.html" %}
+
+{% block title %}貸出状況{% endblock %}
+
+{% block extra_css %}
+<style>
+  .loan-page { max-width: 700px; margin: 0 auto; padding: 24px 20px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin: 12px 0; }
+  .btn { background: #ddd; border: none; padding: 4px 12px; font-size: 12px; color: #000; text-decoration: none; cursor: pointer; }
+  .btn.disabled { opacity: .4; pointer-events: none; }
+  .panel { background: #ddd; padding: 10px; }
+  .panel-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
+  .sort-link { color: #000; text-decoration: none; cursor: pointer; }
+  .sort-link:hover { text-decoration: underline; }
+  .legend { background: #fff; padding: 4px 12px; display: flex; gap: 14px; align-items: center; }
+  .row { background: #fff; margin-bottom: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; min-height: 24px; color: inherit; text-decoration: none; }
+  .row:hover { background: #f3f3f3; }
+  .row .title { font-size: 18px; }
+  .row .dates { margin-left: auto; font-size: 10px; color: #555; line-height: 1.4; }
+  /* ステータスアイコン */
+  .icon { display: inline-block; width: 16px; height: 16px; text-align: center; font-size: 11px; line-height: 16px; font-weight: bold; }
+  .icon.overdue { background: #e53935; color: #fff; border-radius: 50%; }
+  .icon.soon { color: #f5c400; font-size: 16px; }
+  .icon.ok { background: #2ecc40; border-radius: 50%; width: 12px; height: 12px; }
+  .empty { background: #fff; padding: 16px; text-align: center; color: #777; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="loan-page">
+  <h2>貸出状況一覧</h2>
+
+  <div class="toolbar">
+    <a class="btn" href="{% url 'manager:rental_list' %}?order={{ order }}&page={{ page_obj.number }}">更新</a>
+    <a class="btn {% if not page_obj.has_previous %}disabled{% endif %}"
+       href="{% if page_obj.has_previous %}?order={{ order }}&page={{ page_obj.previous_page_number }}{% else %}#{% endif %}">前へ</a>
+    <span>{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+    <a class="btn {% if not page_obj.has_next %}disabled{% endif %}"
+       href="{% if page_obj.has_next %}?order={{ order }}&page={{ page_obj.next_page_number }}{% else %}#{% endif %}">次へ</a>
+  </div>
+
+  <div class="panel">
+    <div class="panel-top">
+      {% if order == "asc" %}
+        <a class="sort-link" href="?order=desc">古い順↑(押すと新着順)</a>
+      {% else %}
+        <a class="sort-link" href="?order=asc">新着順↓(押すと古い順)</a>
+      {% endif %}
+      <div class="legend">
+        <span><span class="icon overdue">!</span> 期限切れ</span>
+        <span><span class="icon soon">▲</span> 期限間近</span>
+        <span><span class="icon ok"></span> 期限前</span>
+      </div>
+    </div>
+
+    {% for loan in loans %}
+      <a class="row" href="{% url 'manager:rental_detail' rental_id=loan.id %}">
+        <span class="icon {{ loan.status }}">{% if loan.status == "overdue" %}!{% elif loan.status == "soon" %}▲{% endif %}</span>
+        <span class="title">「{{ loan.book.title }}」</span>
+        <span>{{ loan.student.student_no }}</span>
+        <span class="dates">
+          貸日：{{ loan.loaned_on|date:"Y/n/j" }}<br>
+          返却日：{{ loan.due_on|date:"Y/n/j" }}
+        </span>
+      </a>
+    {% empty %}
+      <div class="empty">貸出中の本はありません</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
