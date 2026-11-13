@@ -17,8 +17,14 @@
     column-gap: .75rem;
   }
   .tag-grid-head { font-size: .9rem; }
+  /* 編集モード以外は「新しいタグ名」カラムを隠す */
+  .tag-panel:not(.editing) .tag-new { display: none; }
+  .tag-panel:not(.editing) .tag-grid {
+    grid-template-columns: 2rem minmax(5rem, 1fr) auto;
+  }
   @media (max-width: 575.98px) {
-    .tag-grid {
+    .tag-grid,
+    .tag-panel:not(.editing) .tag-grid {
       grid-template-columns: 2rem 1fr;
       row-gap: .5rem;
     }
@@ -76,9 +82,9 @@
       {% comment %} <button type="submit" name="action" value="bulk_edit"
               class="btn btn-secondary btn-sm needs-edit" disabled>一括編集</button> {% endcomment %}
       <button type="submit" name="action" value="bulk_delete"
-              class="btn btn-secondary btn-sm"
+              class="btn btn-secondary btn-sm edit-only d-none"
               onclick="return confirm('選択したタグをすべて削除します。よろしいですか？');">一括削除</button>
-      <button type="button" id="add-tag-row-btn" class="btn btn-primary btn-sm ms-auto">
+      <button type="button" id="add-tag-row-btn" class="btn btn-primary btn-sm ms-auto edit-only d-none">
         <i class="bi bi-plus-lg"></i> タグを追加
       </button>
     </div>
@@ -112,7 +118,7 @@
             {% comment %} <button type="submit" name="edit_tag" value="{{ tag.pk }}"
                     class="btn btn-outline-primary btn-sm needs-edit" disabled>編集</button> {% endcomment %}
             <button type="submit" name="delete_tag" value="{{ tag.pk }}"
-                    class="btn btn-outline-danger btn-sm"
+                    class="btn btn-outline-danger btn-sm edit-only d-none"
                     onclick="return confirm('タグ「{{ tag.name|escapejs }}」を削除します。よろしいですか？');">削除</button>
           </div>
         </div>
@@ -185,6 +191,10 @@
     // タイトル・著者名・既存タグの新しいタグ名が対象
     var fields = document.querySelectorAll('.book-field, .tag-name-field');
     var needsEdit = document.querySelectorAll('.needs-edit');
+    // 編集モード中だけ表示するボタン（一括削除・タグを追加・削除）
+    var editOnly = document.querySelectorAll('.edit-only');
+    // 「新しいタグ名」カラムの表示切替は .editing クラスで行う
+    var tagPanel = document.querySelector('.tag-panel');
     if (!btn) return;
     var editing = false;
     var originals = Array.prototype.map.call(fields, function (f) { return f.value; });
@@ -195,6 +205,8 @@
         // 編集モード開始
         fields.forEach(function (f) { f.removeAttribute('readonly'); });
         needsEdit.forEach(function (b) { b.disabled = false; });
+        editOnly.forEach(function (b) { b.classList.remove('d-none'); });
+        tagPanel.classList.add('editing');
         fields[0].focus();
         btn.textContent = '編集中';
         btn.classList.replace('btn-secondary', 'btn-primary');
@@ -205,6 +217,10 @@
           f.setAttribute('readonly', '');
         });
         needsEdit.forEach(function (b) { b.disabled = true; });
+        editOnly.forEach(function (b) { b.classList.add('d-none'); });
+        tagPanel.classList.remove('editing');
+        // 未保存の追加タグ行も破棄する
+        document.querySelectorAll('.new-tag-row').forEach(function (r) { r.remove(); });
         btn.textContent = '編集';
         btn.classList.replace('btn-primary', 'btn-secondary');
       }
