@@ -1,1 +1,272 @@
 {% extends "manager_base.html" %}
+
+{% block title %}ユーザー一覧{% endblock title %}
+
+{% block style %}
+<style>
+    body {
+        background-color: #ffffff;
+    }
+
+    .page-container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 0 15px;
+    }
+
+    .page-title {
+        font-weight: 700;
+        font-size: 1.5rem;
+    }
+
+    /* 学科・学年の絞り込み（スマホ画面と同じ青系テーマカラー #2563eb に合わせる） */
+    .filter-select {
+        background-color: #eff6ff;
+        border-color: #93c5fd;
+        color: #1e3a8a;
+        font-weight: 500;
+        text-align: center;
+        text-align-last: center;
+        /* ▼ をテーマカラーの青に */
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%232563eb' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    }
+
+    .filter-select:hover {
+        background-color: #dbeafe;
+    }
+
+    .filter-select:focus {
+        background-color: #ffffff;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 .25rem rgba(37, 99, 235, .25);
+    }
+
+    .user-list .list-group-item:hover {
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    .user-link {
+        color: var(--bs-body-color);
+        text-decoration: none;
+    }
+
+    .user-link:hover .user-name {
+        color: var(--bs-primary);
+        text-decoration: underline;
+    }
+
+    .user-name {
+        font-weight: 500;
+    }
+
+    .student-no {
+        font-size: 0.9rem;
+        color: var(--bs-secondary-color);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+{% endblock style %}
+
+
+{% block content %}
+<div class="page-container">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="page-title mb-0">
+            {% if mode == "inactive" %}
+                <i class="bi bi-person-slash me-2"></i>無効ユーザー一覧
+            {% else %}
+                <i class="bi bi-people me-2"></i>ユーザー一覧
+            {% endif %}
+        </h1>
+
+        <!-- 通常モード / 無効ユーザー検索モード の切り替え -->
+        <div class="btn-group btn-group-sm" role="group" aria-label="表示モード">
+            <a href="?" class="btn btn-outline-secondary {% if mode != 'inactive' %}active{% endif %}"
+               {% if mode != "inactive" %}aria-current="true"{% endif %}>
+                <i class="bi bi-person-check me-1"></i>通常
+            </a>
+            <a href="?mode=inactive" class="btn btn-outline-secondary {% if mode == 'inactive' %}active{% endif %}"
+               {% if mode == "inactive" %}aria-current="true"{% endif %}>
+                <i class="bi bi-person-slash me-1"></i>無効ユーザー
+            </a>
+        </div>
+    </div>
+
+    <!-- 検索・絞り込み -->
+    <div class="card shadow-sm border-0 mb-4 {% if mode == 'inactive' %}border-start border-4 border-secondary{% endif %}">
+        <div class="card-body">
+            <form method="get" id="filter-form">
+                <input type="hidden" name="order" value="{{ order }}">
+                {% if mode == "inactive" %}
+                    <input type="hidden" name="mode" value="inactive">
+                {% endif %}
+
+                <div class="input-group mb-3">
+                    <input type="search" name="q" value="{{ keyword }}"
+                           class="form-control"
+                           placeholder="名前・学籍番号で検索"
+                           aria-label="ユーザーを検索">
+                    <button class="btn btn-outline-secondary" type="submit">
+                        <i class="bi bi-search"></i> 検索
+                    </button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-sm-6">
+                        <select name="department" class="form-select filter-select"
+                                aria-label="学科で絞り込み"
+                                data-auto-submit>
+                            <option value="">学科（すべて）</option>
+                            {% for dept in departments %}
+                                <option value="{{ dept.pk }}"
+                                        {% if dept.pk|stringformat:"s" == department %}selected{% endif %}>
+                                    {{ dept.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-sm-6">
+                        {% if mode == "inactive" %}
+                            <!-- 無効ユーザーは学年が意味を持たないので入学年で絞り込む -->
+                            <select name="enrollment_year" class="form-select filter-select"
+                                    aria-label="入学年で絞り込み"
+                                    data-auto-submit>
+                                <option value="">入学年（すべて）</option>
+                                {% for y in enrollment_years %}
+                                    <option value="{{ y }}"
+                                            {% if y|stringformat:"s" == enrollment_year %}selected{% endif %}>
+                                        {{ y }}年入学
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            <select name="grade" class="form-select filter-select"
+                                    aria-label="学年で絞り込み"
+                                    data-auto-submit>
+                                <option value="">学年（すべて）</option>
+                                {% for g in grades %}
+                                    <option value="{{ g }}"
+                                            {% if g|stringformat:"s" == grade %}selected{% endif %}>
+                                        {{ g }}年
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ユーザー一覧 -->
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <span class="text-body-secondary small">{{ page_obj.paginator.count|default:0 }} 件</span>
+            <a href="?{{ sort_query }}" class="btn btn-sm btn-outline-secondary">
+                {% if order == "asc" %}
+                    <i class="bi bi-sort-up me-1"></i>昇順
+                {% else %}
+                    <i class="bi bi-sort-down me-1"></i>降順
+                {% endif %}
+            </a>
+        </div>
+
+        <ul class="list-group list-group-flush user-list">
+            {% for student in page_obj %}
+                <li class="list-group-item py-3">
+                    <a href="{% url 'manager:user_detail' user_id=student.user_id %}"
+                       class="user-link d-flex justify-content-between align-items-center gap-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2 min-w-0">
+                            {% if mode == "inactive" %}
+                                <span class="badge rounded-pill text-bg-light border">{{ student.enrollment_year }}年入学</span>
+                            {% else %}
+                                <span class="badge rounded-pill text-bg-light border">{{ student.grade }}年</span>
+                            {% endif %}
+                            <span class="text-body-secondary">{{ student.department.name }}</span>
+                            <span class="user-name fs-5 text-break">{{ student.student_name }}</span>
+                            {% if mode == "inactive" %}
+                                <span class="badge text-bg-secondary">無効</span>
+                            {% endif %}
+                        </div>
+                        <span class="student-no">{{ student.student_no }}</span>
+                    </a>
+                </li>
+            {% empty %}
+                <li class="list-group-item text-center text-body-secondary py-5">
+                    <i class="bi bi-person-x fs-2 d-block mb-2"></i>
+                    {% if keyword or department or grade or enrollment_year %}
+                        該当するユーザーがいません
+                    {% elif mode == "inactive" %}
+                        無効化されたユーザーはいません
+                    {% else %}
+                        登録されているユーザーがいません
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+
+        <!-- ページネーション -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="card-footer bg-white py-3">
+            <nav aria-label="ユーザー一覧ページ">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                        {% if page_obj.has_previous %}
+                            <a class="page-link" href="?{{ base_query }}&page={{ page_obj.previous_page_number }}">&laquo; 前へ</a>
+                        {% else %}
+                            <span class="page-link">&laquo; 前へ</span>
+                        {% endif %}
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                        {% if page_obj.has_next %}
+                            <a class="page-link" href="?{{ base_query }}&page={{ page_obj.next_page_number }}">次へ &raquo;</a>
+                        {% else %}
+                            <span class="page-link">次へ &raquo;</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("filter-form");
+    if (!form) return;
+
+    // 学科・学年・入学年を選んだらすぐ絞り込む
+    form.querySelectorAll("[data-auto-submit]").forEach((select) => {
+        select.addEventListener("change", () => form.requestSubmit());
+    });
+
+    // 検索ボックスの×ボタンで空にしたときも、検索条件を解除して再表示する
+    const searchInput = form.querySelector('input[name="q"]');
+    if (searchInput) {
+        searchInput.addEventListener("search", () => {
+            if (searchInput.value === "") form.requestSubmit();
+        });
+    }
+
+    // 空の項目はURLに載せない（?q=&department=&... のようにならないようにする）
+    form.addEventListener("submit", () => {
+        form.querySelectorAll("input[name], select[name]").forEach((el) => {
+            if (el.value.trim() === "") el.disabled = true;
+        });
+    });
+
+    // 戻るボタンで戻ってきたとき、disabled のまま残らないように戻す
+    window.addEventListener("pageshow", () => {
+        form.querySelectorAll("[disabled]").forEach((el) => { el.disabled = false; });
+    });
+});
+</script>
+{% endblock content %}

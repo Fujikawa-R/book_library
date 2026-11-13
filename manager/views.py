@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from accounts.models import Department
+from accounts.models import Department, Student
 
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -18,22 +18,22 @@ import re
 import unicodedata
  
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
  
 from library.models import Book, BookTag, Tag
+from .decorators import admin_required
 from .models import Loan
 
-# TODO: 実装が進んだら、管理者のみ許可する（@staff_member_required など）
+# このファイルのビューはすべて管理者専用（@admin_required）
 
 
 PER_PAGE = 5
 
 
+@admin_required
 def book_list(request):
     keyword = request.GET.get("q", "").strip()
     order = request.GET.get("order", "new")  # new: 新着順 / old: 古い順
@@ -144,13 +144,9 @@ def _parse_books(raw_json):
     return list(merged.values()), errors
  
  
-@login_required
+@admin_required
 @require_http_methods(["GET", "POST"])
 def book_add(request):
-    # 管理者のみ。他の manager ビューと同じ権限チェックに合わせて差し替えてください
-    if getattr(request.user, "role", None) != "admin":
-        raise PermissionDenied
- 
     if request.method == "GET":
         return render(request, "manager/book_add.html")
  
@@ -229,6 +225,7 @@ def _detach_tags(book, tag_ids):
     BookTag.objects.filter(book=book, tag_id__in=tag_ids).update(is_active=False)
  
  
+@admin_required
 def book_detail(request, isbn):
     book = get_object_or_404(Book, isbn=isbn)
  
@@ -293,12 +290,97 @@ def book_detail(request, isbn):
     )
 
 
+USER_PER_PAGE = 20
+
+
+def _school_year(today=None):
+    """今日が属する年度（4月始まり）。Student.grade と同じ計算。"""
+    today = today or timezone.localdate()
+    return today.year if today.month >= 4 else today.year - 1
+
+
+def _int_param(request, name):
+    """数字ならその文字列を、それ以外は空文字を返す（テンプレートの selected 判定用に文字列のまま）。"""
+    value = request.GET.get(name, "").strip()
+    return value if value.isdigit() else ""
+
+
+@admin_required
 def user_list(request):
-    return render(request, "manager/user_list.html")
+    # mode: "" = 通常（有効なユーザー） / "inactive" = 無効化されたユーザー
+    mode = "inactive" if request.GET.get("mode") == "inactive" else ""
+    keyword = request.GET.get("q", "").strip()
+    order = "asc" if request.GET.get("order") == "asc" else "desc"
+    department = _int_param(request, "department")
+    grade = _int_param(request, "grade") if not mode else ""
+    enrollment_year = _int_param(request, "enrollment_year") if mode else ""
+
+    school_year = _school_year()
+
+    # モードごとの母集団。絞り込みの選択肢はここから作る
+    base = Student.objects.filter(user__is_active=(mode != "inactive"))
+
+    students = base.select_related("department", "user")
+
+    if keyword:
+        students = students.filter(
+            Q(student_name__icontains=keyword) | Q(student_no__icontains=keyword)
+        )
+    if department:
+        students = students.filter(department_id=department)
+    if grade:
+        # 学年は保存していないので入学年に変換して絞り込む
+        students = students.filter(enrollment_year=school_year - int(grade) + 1)
+    if enrollment_year:
+        students = students.filter(enrollment_year=enrollment_year)
+
+    students = students.order_by("student_no" if order == "asc" else "-student_no")
+
+    page_obj = Paginator(students, USER_PER_PAGE).get_page(request.GET.get("page"))
+
+    # 選択肢：今のモードに実際にいる生徒の学科・入学年だけを出す
+    # （無効ユーザーは削除済みの学科に属していることもあるので is_active では絞らない）
+    departments = Department.objects.filter(student__in=base).distinct().order_by("id")
+    years = sorted(set(base.values_list("enrollment_year", flat=True)), reverse=True)
+    grades = sorted({school_year - y + 1 for y in years if school_year - y + 1 >= 1})
+
+    # ページ送り・並び替えで条件を引き継ぐためのクエリ（空の値は省く）
+    params = {
+        "mode": mode,
+        "q": keyword,
+        "department": department,
+        "grade": grade,
+        "enrollment_year": enrollment_year,
+    }
+    params = {k: v for k, v in params.items() if v}
+
+    context = {
+        "page_obj": page_obj,
+        "mode": mode,
+        "keyword": keyword,
+        "order": order,
+        "department": department,
+        "grade": grade,
+        "enrollment_year": enrollment_year,
+        "departments": departments,
+        "grades": grades,
+        "enrollment_years": years,
+        "base_query": urlencode({**params, "order": order}),
+        "sort_query": urlencode({**params, "order": "desc" if order == "asc" else "asc"}),
+    }
+    return render(request, "manager/user_list.html", context)
 
 
+@admin_required
 def user_detail(request, user_id):
-    return render(request, "manager/user_detail.html", {"user_id": user_id})
+    student = get_object_or_404(
+        Student.objects.select_related("department", "user"), user_id=user_id
+    )
+    rentals = student.rentals.select_related("book").order_by("-checkout_date", "-id")
+    return render(request, "manager/user_detail.html", {
+        "student": student,
+        "rentals": rentals,
+    })
 
 
 
@@ -410,6 +492,7 @@ def _save_departments(post):
     return [], restored
 
 
+@admin_required
 def department_list(request):
     if request.method == "POST":
         try:
@@ -439,6 +522,7 @@ SOON_DAYS = 3  # 返却日まで何日以内を「期限間近」とするか（
 LOAN_STATUSES = ("overdue", "soon", "ok")
 
 
+@admin_required
 def rental_list(request):
     order = request.GET.get("order", "desc")
     if order not in ("asc", "desc"):
@@ -485,60 +569,151 @@ def rental_list(request):
 
 
 
+@admin_required
 def rental_detail(request, rental_id):
     return render(request, "manager/rental_detail.html", {"rental_id": rental_id})
 
 
+@admin_required
 def report_list(request):
     return render(request, "manager/report_list.html")
 
 
+@admin_required
 def report_detail(request, report_id):
     return render(request, "manager/report_detail.html", {"report_id": report_id})
 
 
+@admin_required
 def notice_list(request):
     return render(request, "manager/notice_list.html")
 
 
+@admin_required
 def user_notice_list(request):
     return render(request, "manager/user_notice_list.html")
 
 
+@admin_required
 def user_notice_text_list(request):
     return render(request, "manager/user_notice_text_list.html")
 
 
+@admin_required
 @require_POST
 def book_suspend_toggle(request, isbn):
     # TODO: 貸出停止・解除
     return redirect("manager:book_detail", isbn=isbn)
 
 
+@admin_required
 @require_POST
 def book_lost(request, isbn):
     # TODO: 紛失処理（冊数を減らす）
     return redirect("manager:book_detail", isbn=isbn)
 
 
+@admin_required
 @require_POST
 def user_deactivate(request, user_id):
-    # TODO: 手動の無効化
+    """手動の無効化。User.is_active を False にする（論理削除）。"""
+    student = get_object_or_404(Student.objects.select_related("user"), user_id=user_id)
+    user = student.user
+
+    if not user.is_active:
+        messages.info(request, f"{student.student_name} さんはすでに無効化されています。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+
+    lending = student.rentals.filter(return_date__isnull=True, is_lost=False).count()
+    if lending:
+        messages.warning(
+            request,
+            f"{student.student_name} さんを無効化しました。未返却の本が {lending} 冊あります。",
+        )
+    else:
+        messages.success(request, f"{student.student_name} さんを無効化しました。")
     return redirect("manager:user_detail", user_id=user_id)
 
 
+@admin_required
 @require_POST
 def user_extend_graduation(request, user_id):
-    # TODO: 卒業年の延長
+    """留年。卒業年の延長を1年増やす（無効化されるのも1年後ろにずれる）。"""
+    student = get_object_or_404(
+        Student.objects.select_related("user", "department"), user_id=user_id
+    )
+
+    if not student.user.is_active:
+        messages.error(request, "無効化されたユーザーは留年させられません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    # 同時に押されても取りこぼさないよう DB 側で加算する
+    Student.objects.filter(pk=student.pk).update(
+        graduation_extension=F("graduation_extension") + 1
+    )
+    student.refresh_from_db(fields=["graduation_extension"])
+
+    messages.success(
+        request,
+        f"{student.student_name} さんを留年にしました。"
+        f"卒業日は {student.graduation_date:%Y/%m/%d} になります。",
+    )
     return redirect("manager:user_detail", user_id=user_id)
 
 
+@admin_required
+@require_POST
+def user_cancel_extension(request, user_id):
+    """留年取消。卒業年の延長を1年減らす（0未満にはしない）。"""
+    student = get_object_or_404(
+        Student.objects.select_related("user", "department"), user_id=user_id
+    )
+
+    if not student.user.is_active:
+        messages.error(request, "無効化されたユーザーの留年は取り消せません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    if student.graduation_extension <= 0:
+        messages.error(request, f"{student.student_name} さんは留年していません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    # 取り消すと卒業日が過ぎてしまう場合は止める（翌日に無効化されるべき状態になるため）
+    new_graduation = student.graduation_date.replace(year=student.graduation_date.year - 1)
+    if new_graduation < timezone.localdate():
+        messages.error(
+            request,
+            f"取り消すと卒業日（{new_graduation:%Y/%m/%d}）が過ぎてしまうため取り消せません。",
+        )
+        return redirect("manager:user_detail", user_id=user_id)
+
+    # 0未満にならないよう条件付きで DB 側で減算する
+    updated = Student.objects.filter(pk=student.pk, graduation_extension__gt=0).update(
+        graduation_extension=F("graduation_extension") - 1
+    )
+    if not updated:
+        messages.error(request, f"{student.student_name} さんは留年していません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    student.refresh_from_db(fields=["graduation_extension"])
+    messages.success(
+        request,
+        f"{student.student_name} さんの留年を取り消しました。"
+        f"卒業日は {student.graduation_date:%Y/%m/%d} になります。",
+    )
+    return redirect("manager:user_detail", user_id=user_id)
+
+
+@admin_required
 @require_POST
 def department_deactivate(request, department_id):
     # TODO: 学科の無効化（アクティブな生徒がいないときのみ）
     return redirect("manager:department_list")
 
 
+@admin_required
 @require_POST
 def report_delete_review(request, report_id):
     # TODO: 通報された評価の削除

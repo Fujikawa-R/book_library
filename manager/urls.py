@@ -16,6 +16,7 @@ urlpatterns = [
     path("users/<int:user_id>/", views.user_detail, name="user_detail"),
     path("users/<int:user_id>/deactivate/", views.user_deactivate, name="user_deactivate"),
     path("users/<int:user_id>/extend/", views.user_extend_graduation, name="user_extend_graduation"),
+    path("users/<int:user_id>/extend/cancel/", views.user_cancel_extension, name="user_cancel_extension"),
     # 学科
     path("departments/", views.department_list, name="department_list"),
     path("departments/<int:department_id>/deactivate/", views.department_deactivate, name="department_deactivate"),
