@@ -6,11 +6,12 @@
 
 body {
     margin: 0;
-    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-family: "Helvetica Neue", Arial, "Hiragino Sans", "Noto Sans JP", sans-serif;
     background-color: #f8fafc;
     color: #1e293b;
 }
 
+/* ===== レイアウト ===== */
 .login-page {
     min-height: 100dvh;
     display: flex;
@@ -47,6 +48,7 @@ body {
     border: 1px solid #e2e8f0;
     border-radius: 18px;
     padding: 28px 24px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
 }
 
 .login-card h2 {
@@ -55,6 +57,7 @@ body {
     margin: 0 0 28px;
 }
 
+/* ===== 入力欄 ===== */
 .form-group {
     margin-bottom: 22px;
 }
@@ -66,43 +69,112 @@ body {
     margin-bottom: 8px;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
     width: 100%;
     height: 48px;
     padding: 0 14px;
     border: 1px solid #cbd5e1;
     border-radius: 10px;
-    background-color: #fff;
-    font-size: 16px;
+    background-color: #ffffff;
+    font-size: 16px; /* 16px未満だとiPhoneで入力時にズームされる */
+    color: #1e293b;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
     border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-.login-button {
+/* ===== ボタン共通 ===== */
+.login-button,
+.register-button {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     width: 100%;
     min-height: 48px;
-    margin-top: 28px;
-    border: none;
     border-radius: 10px;
-    background-color: #2563eb;
-    color: white;
     font-size: 16px;
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.login-button:active,
+.register-button:active {
+    transform: scale(0.98);
+}
+
+.login-button:focus-visible,
+.register-button:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+/* ログインボタン（メイン） */
+.login-button {
+    margin-top: 28px;
+    border: none;
+    background-color: #2563eb;
+    color: #ffffff;
 }
 
 .login-button:hover {
     background-color: #1d4ed8;
 }
 
+/* ===== 新規登録・ログインへの切り替え ===== */
+.register-link {
+    margin-top: 28px;
+}
+
+/* 「── アカウントをお持ちでない方 ──」の区切り線 */
+.register-link p {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.register-link p::before,
+.register-link p::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background-color: #e2e8f0;
+}
+
+/* 新規登録ボタン（サブ） */
+.register-button {
+    border: 1.5px solid #bfdbfe;
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.register-button::after {
+    content: "→";
+    transition: transform 0.2s;
+}
+
+.register-button:hover {
+    border-color: #2563eb;
+    background-color: #dbeafe;
+}
+
+.register-button:hover::after {
+    transform: translateX(3px);
+}
+
+/* ===== エラー表示 ===== */
 .error-message {
     padding: 12px;
     margin-bottom: 20px;
@@ -112,31 +184,17 @@ body {
     font-size: 13px;
 }
 
+.error-message p {
+    margin: 0;
+}
+
+.error-message p + p {
+    margin-top: 4px;
+}
+
+/* ===== スマホ ===== */
 @media (max-width: 480px) {
     .login-card {
         padding: 24px 20px;
     }
-}
-
-/* 学科のプルダウン */
-.form-group select {
-    width: 100%;
-    padding: 13px 14px;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    background-color: white;
-    font-size: 14px;
-    color: #334155;
-    box-sizing: border-box;
-}
-
-.form-group select:focus {
-    outline: none;
-    border-color: #2563eb;
-}
-
-/* 入学年 */
-.form-group input[type="number"] {
-    width: 100%;
-    box-sizing: border-box;
 }

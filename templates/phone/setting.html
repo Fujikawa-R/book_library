@@ -26,10 +26,17 @@
         <form method="post" id="setting-form" class="setting-form">
             {% csrf_token %}
 
+            <!-- 名前 -->
+            <div class="form-group">
+                <label for="student_name">名前</label>
+                <input type="text" id="student_name" name="student_name" value="{{ student.student_name }}"
+                    autocomplete="name" maxlength="50" readonly required>
+            </div>
+
             <!-- メールアドレス -->
             <div class="form-group">
                 <label for="email">メールアドレス</label>
-                <input type="email" id="email" name="email" value="{{ student.email }}" autocomplete="email" readonly
+                <input type="email" id="email" name="email" value="{{ student.user.email }}" autocomplete="email" readonly
                     required>
             </div>
 
@@ -106,7 +113,7 @@
 
                 <select id="department" name="department" disabled>
                     {% for department in departments %}
-                    <option value="{{ department }}" {% if student.department == department %}selected{% endif %}>
+                    <option value="{{ department.id }}" {% if student.department_id == department.id %}selected{% endif %}>
                         {{ department }}
                     </option>
                     {% endfor %}
@@ -145,6 +152,7 @@
 
         // 要素取得
         const form = document.getElementById("setting-form");
+        const studentName = document.getElementById("student_name");
         const email = document.getElementById("email");
         const department = document.getElementById("department");
 
@@ -183,40 +191,12 @@
             }, 2500);
         }
 
-        // 学籍番号ごとに保存データを分ける
-        const studentId = document.getElementById("student-id").textContent.trim();
-        const storageKey = `student_settings_${studentId}`;
-
-        // views.pyのダミーデータ
-        let savedData = {
+        // サーバー（DB）から表示された値を「保存済み」として扱う
+        const savedData = {
+            studentName: studentName.value,
             email: email.value,
             department: department.value
         };
-
-        // 保存済みデータを読み込む
-        try {
-            const stored = localStorage.getItem(storageKey);
-
-            if (stored) {
-                const parsed = JSON.parse(stored);
-
-                if (typeof parsed.email === "string") {
-                    savedData.email = parsed.email;
-                }
-
-                if (typeof parsed.department === "string") {
-                    const exists = Array.from(department.options).some(
-                        option => option.value === parsed.department
-                    );
-
-                    if (exists) {
-                        savedData.department = parsed.department;
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn("保存データを読み込めませんでした", error);
-        }
 
         // パスワード欄を初期状態に戻す
         function resetPasswordFields() {
@@ -234,6 +214,7 @@
 
         // 保存済みデータに戻す
         function restoreSavedData() {
+            studentName.value = savedData.studentName;
             email.value = savedData.email;
             department.value = savedData.department;
 
@@ -242,6 +223,7 @@
 
         // 閲覧・編集モード切り替え
         function setEditMode(editing) {
+            studentName.readOnly = !editing;
             email.readOnly = !editing;
             department.disabled = !editing;
 
@@ -317,38 +299,22 @@
                     return;
                 }
 
-                // DB未接続のためパスワード変更は行わない
-                showToast("パスワード変更はDB接続後に実装します。", "error");
-                return;
             }
 
-            // メールアドレス・学科を保存
-            const newData = {
-                email: email.value.trim(),
-                department: department.value
-            };
-
-            try {
-                localStorage.setItem(
-                    storageKey,
-                    JSON.stringify(newData)
-                );
-            } catch (error) {
-                showToast("設定を保存できませんでした。", "error");
-                return;
-            }
-
-            savedData = newData;
-
-            restoreSavedData();
-            setEditMode(false);
-
-            showToast("設定を保存しました。");
+            // 送信直前に disabled を外さないと学科が POST されない
+            department.disabled = false;
+            passwordInputs.forEach(input => { input.disabled = false; });
+            form.submit();
         });
 
-        // 初期表示
-        restoreSavedData();
+        // 初期表示（エラー時は入力内容を残したまま編集モード）
+        {% if error %}
+        setEditMode(true);
+        showToast("{{ error|escapejs }}", "error");
+        {% else %}
         setEditMode(false);
+        {% if success %}showToast("{{ success|escapejs }}");{% endif %}
+        {% endif %}
 
     });
 </script>
