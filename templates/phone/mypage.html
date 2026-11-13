@@ -1,3 +1,141 @@
 {% extends "phone_base.html" %}
+{% load django_bootstrap5 %}
 
 {% block title %}マイページ{% endblock %}
+
+{% block extra_css %}
+{% bootstrap_css %}
+<style>
+    .qr-box {
+        width: 168px;
+        height: 168px;
+    }
+    .qr-box svg {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* セクション見出しの左の縦線 */
+    .section-title {
+        border-left: 5px solid var(--bs-primary);
+        padding-left: .6rem;
+    }
+
+    /* 貸出カード：左端の色で状態が分かるようにする */
+    .rental-card {
+        border-left: 6px solid var(--bs-primary) !important;
+        transition: transform .1s;
+    }
+    .rental-card:active {
+        transform: scale(.98);
+    }
+    .rental-card.is-warning { border-left-color: var(--bs-warning) !important; }
+    .rental-card.is-danger  { border-left-color: var(--bs-danger) !important; }
+    .rental-card.is-past    { border-left-color: var(--bs-secondary-bg) !important; }
+
+    .countdown {
+        min-width: 4.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="mypage container pt-4" style="max-width: 480px;">
+
+    <!-- 学籍番号・QRコード -->
+    <section class="student-card card border-0 rounded-4 shadow text-bg-primary bg-gradient mb-5">
+        <div class="card-body p-4">
+            <p class="small text-white-50 mb-0">学籍番号</p>
+            <h1 class="h2 fw-bold mb-0 font-monospace">{{ student.student_no }}</h1>
+            <p class="mb-3">{{ student.student_name }}</p>
+
+            <div class="qr-box mx-auto bg-white p-2 rounded-3 shadow-sm">
+                {{ qr_svg|safe }}
+            </div>
+            <p class="small text-center text-white-50 mt-3 mb-0">
+                貸出・返却のときにこのQRコードを読み取ってください
+            </p>
+        </div>
+    </section>
+
+    <!-- 現在借りている本 -->
+    <section class="mb-5">
+        <h2 class="section-title h5 fw-bold mb-3 d-flex align-items-center gap-2">
+            現在借りている本
+            <span class="badge rounded-pill text-bg-primary">{{ current_rentals|length }}</span>
+        </h2>
+
+        {% for rental in current_rentals %}
+            <a href="{% url 'phone:book_detail' rental.book.isbn %}" class="text-reset text-decoration-none">
+                <div class="card rental-card {{ rental.level }} border-0 rounded-3 shadow-sm mb-3">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <h3 class="h6 fs-5 fw-bold mb-0 text-break">{{ rental.book.title }}</h3>
+
+                            <!-- 返却期限までの残り -->
+                            <div class="countdown text-center flex-shrink-0 rounded-3 px-2 py-1 lh-sm
+                                {% if rental.level == 'is-danger' %}bg-danger-subtle text-danger-emphasis
+                                {% elif rental.level == 'is-warning' %}bg-warning-subtle text-warning-emphasis
+                                {% else %}bg-primary-subtle text-primary-emphasis{% endif %}">
+                                {% if rental.days_left < 0 %}
+                                    <small class="d-block">延滞中</small>
+                                    <span class="fw-bold">{{ rental.overdue_days }}日超過</span>
+                                {% elif rental.days_left == 0 %}
+                                    <small class="d-block">返却日</small>
+                                    <span class="fw-bold">今日</span>
+                                {% else %}
+                                    <small class="d-block">返却日まで</small>
+                                    {% if rental.days_left >= 7 %}
+                                        <span class="fw-bold">{% widthratio rental.days_left 7 1 %}週間</span>
+                                    {% else %}
+                                        <span class="fw-bold">{{ rental.days_left }}日</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between small text-body-secondary">
+                            <span>貸出日 {{ rental.checkout_date|date:"Y/m/d" }}</span>
+                            <span>返却日 <span class="fw-semibold text-body">{{ rental.due_date|date:"Y/m/d" }}</span></span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        {% empty %}
+            <div class="alert alert-primary border-0 small mb-0">
+                現在借りている本はありません。「探す」から本を探してみましょう！
+            </div>
+        {% endfor %}
+    </section>
+
+    <!-- 今まで借りた本 -->
+    <section class="mb-4">
+        <h2 class="section-title h5 fw-bold mb-3 d-flex align-items-center gap-2">
+            今まで借りた本
+            <span class="badge rounded-pill text-bg-secondary">{{ past_rentals|length }}</span>
+        </h2>
+
+        {% for rental in past_rentals %}
+            <a href="{% url 'phone:book_detail' rental.book.isbn %}" class="text-reset text-decoration-none">
+                <div class="card rental-card is-past border-0 rounded-3 shadow-sm mb-3">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                            <h3 class="h6 fs-5 fw-bold mb-0 text-break">{{ rental.book.title }}</h3>
+                            <span class="badge rounded-pill bg-info-subtle text-info-emphasis flex-shrink-0">返却済み</span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-body-secondary">
+                            <span>貸出日 {{ rental.checkout_date|date:"Y/m/d" }}</span>
+                            <span>返却日 {{ rental.return_date|date:"Y/m/d" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        {% empty %}
+            <div class="alert alert-secondary border-0 small mb-0">
+                まだ借りた本はありません
+            </div>
+        {% endfor %}
+    </section>
+
+</main>
+{% endblock %}

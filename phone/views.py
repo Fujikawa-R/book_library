@@ -11,14 +11,54 @@ from django.db import transaction
 from django.utils import timezone
 from accounts.models import User
 from library.models import Book, Rental, Review, Tag
-from accounts.models import Student, Department
+from accounts.models import Student, Department, TransactionQR
+
+import qrcode
+import qrcode.image.svg
 
 
 # TODO: 実装が進んだら、ログイン必須（@login_required）と処理を追加する
 
 
+def make_qr_svg(data):
+    """文字列をQRコードのSVG文字列にする（テンプレートにそのまま埋め込む用）。"""
+    img = qrcode.make(data, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=2)
+    return img.to_string(encoding="unicode")
+
+
+@login_required
 def mypage(request):
-    return render(request, "phone/mypage.html")
+    student = get_object_or_404(Student.objects.select_related("user"), user=request.user)
+    today = timezone.localdate()
+
+    # 取引用QRは1日1つ。今日の分がなければ作る
+    transaction_qr, _ = TransactionQR.objects.get_or_create(student=student, created_on=today)
+    # TODO: QRに入れる中身は検討中。今は「日付:トークン」。
+    #       トークンはDB上で生徒に紐づいているので、読み取り側は token で TransactionQR を引けば生徒を特定できる
+    qr_data = f"{transaction_qr.created_on:%Y%m%d}:{transaction_qr.token}"
+
+    rentals = student.rentals.select_related("book").order_by("-checkout_date")
+    current_rentals = list(rentals.filter(return_date__isnull=True, is_lost=False))
+    past_rentals = rentals.filter(return_date__isnull=False)
+
+    # 返却期限までの残り日数（マイナスなら延滞）
+    for rental in current_rentals:
+        rental.days_left = (rental.due_date - today).days
+        rental.overdue_days = -rental.days_left
+        # カードの色分け: 期限切れ・当日=赤、2週間以内=黄、それ以外=primary(青)
+        if rental.days_left <= 0:
+            rental.level = "is-danger"
+        elif rental.days_left <= 14:
+            rental.level = "is-warning"
+        else:
+            rental.level = ""
+
+    return render(request, "phone/mypage.html", {
+        "student": student,
+        "qr_svg": make_qr_svg(qr_data),
+        "current_rentals": current_rentals,
+        "past_rentals": past_rentals,
+    })
 
 @login_required
 def setting(request):
