@@ -1,1 +1,228 @@
 {% extends "manager_base.html" %}
+
+{% block title %}ユーザー詳細{% endblock title %}
+
+{% block style %}
+<style>
+  .user-detail { max-width: 800px; }
+
+  /* 学科・学年・氏名のヘッダー（ワイヤーフレームのグレー帯） */
+  .user-header {
+    background: #dcdcdc;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1.5fr 4fr;
+  }
+  .user-header > div {
+    padding: .75rem 1rem;
+    text-align: center;
+  }
+  .user-header > div + div { border-left: 1px solid #a0a0a0; }
+  .user-header .label {
+    display: block;
+    font-size: .75rem;
+    color: var(--bs-secondary-color);
+  }
+  .user-header .value { font-weight: 500; }
+
+  /* 貸出記録パネル */
+  .rental-panel {
+    background: #dcdcdc;
+    min-height: 200px;
+  }
+  .rental-panel .table { margin-bottom: 0; }
+  .rental-panel .table td,
+  .rental-panel .table th { white-space: nowrap; }
+  .rental-panel .table td.book-title { white-space: normal; }
+
+  /* 行全体をクリックで貸出詳細へ（stretched-link の基準を行にする） */
+  .rental-row { position: relative; cursor: pointer; }
+  .rental-row:hover .book-title a { text-decoration: underline !important; }
+
+  @media (max-width: 575.98px) {
+    .user-header { grid-template-columns: 1fr 1fr 1fr; }
+    .user-header > div:last-child {
+      grid-column: 1 / -1;
+      border-left: none;
+      border-top: 1px solid #a0a0a0;
+    }
+  }
+</style>
+{% endblock style %}
+
+{% block content %}
+<main class="container user-detail py-4">
+
+  <div class="mb-3">
+    <a href="{% url 'manager:user_list' %}" class="link-secondary text-decoration-none">
+      <i class="bi bi-chevron-left"></i> ユーザー一覧へ戻る
+    </a>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="閉じる"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if student.is_deleted %}
+  <div class="alert alert-secondary d-flex align-items-center" role="alert">
+    <i class="bi bi-person-slash me-2"></i>このユーザーは無効化されています
+  </div>
+  {% endif %}
+
+  {# 学科・学年・氏名 #}
+  <div class="user-header rounded mb-5">
+    <div>
+      <span class="label">学科</span>
+      <span class="value">{{ student.department.name }}</span>
+    </div>
+    <div>
+      <span class="label">学年</span>
+      <span class="value">{{ student.grade }}年</span>
+    </div>
+    <div>
+      <span class="label">卒業年</span>
+      <span class="value" title="卒業日：{{ student.graduation_date|date:'Y/m/d' }}">{{ student.graduation_date|date:"Y" }}年</span>
+      {% if student.graduation_extension %}
+      <span class="badge text-bg-warning ms-1">留年{{ student.graduation_extension }}</span>
+      {% endif %}
+    </div>
+    <div>
+      <span class="label">氏名</span>
+      <span class="value">{{ student.student_name }}</span>
+      <small class="text-body-secondary ms-2">{{ student.student_no }}</small>
+    </div>
+  </div>
+
+  {# 貸出記録 #}
+  <h2 class="h6 mb-2"><i class="bi bi-journal-text me-1"></i>貸出記録</h2>
+  <div class="rental-panel rounded p-3 mb-5">
+    {% if rentals %}
+    <div class="table-responsive bg-white rounded">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">タイトル</th>
+            <th scope="col">貸出日</th>
+            <th scope="col">返却期限</th>
+            <th scope="col">返却日</th>
+            <th scope="col" class="text-center">状態</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rental in rentals %}
+          <tr class="rental-row">
+            <td class="book-title">
+              <a href="{% url 'manager:rental_detail' rental_id=rental.id %}"
+                 class="stretched-link link-body-emphasis text-decoration-none">{{ rental.book.title }}</a>
+            </td>
+            <td>{{ rental.checkout_date|date:"Y/m/d" }}</td>
+            <td>{{ rental.due_date|date:"Y/m/d" }}</td>
+            <td>{{ rental.return_date|date:"Y/m/d"|default:"―" }}</td>
+            <td class="text-center">
+              {% if rental.is_lost %}
+                <span class="badge text-bg-dark">紛失</span>
+              {% elif rental.is_overdue %}
+                <span class="badge text-bg-danger">延滞</span>
+              {% elif rental.is_lending %}
+                <span class="badge text-bg-primary">貸出中</span>
+              {% else %}
+                <span class="badge text-bg-secondary">返却済</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="d-flex align-items-center justify-content-center text-body-secondary" style="min-height: 170px;">
+      貸出記録はありません
+    </div>
+    {% endif %}
+  </div>
+
+  {# 留年・無効化ボタン #}
+  <div class="d-flex flex-wrap justify-content-end gap-3">
+    <button type="button" class="btn btn-outline-secondary btn-lg px-4"
+            data-bs-toggle="modal" data-bs-target="#cancelExtendModal"
+            {% if student.is_deleted or not student.graduation_extension %}disabled{% endif %}>留年取消</button>
+    <button type="button" class="btn btn-secondary btn-lg px-5"
+            data-bs-toggle="modal" data-bs-target="#extendModal"
+            {% if student.is_deleted %}disabled{% endif %}>留年</button>
+    <button type="button" class="btn btn-secondary btn-lg px-5"
+            data-bs-toggle="modal" data-bs-target="#deactivateModal"
+            {% if student.is_deleted %}disabled{% endif %}>無効化</button>
+  </div>
+
+  {# 留年の確認モーダル #}
+  <div class="modal fade" id="extendModal" tabindex="-1" aria-labelledby="extendModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form method="post" action="{% url 'manager:user_extend_graduation' user_id=student.user_id %}" class="modal-content">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="extendModalLabel">留年</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          {{ student.student_name }} さんの卒業年を1年延長します。よろしいですか？
+          <div class="small text-body-secondary mt-2">
+            現在の卒業日：{{ student.graduation_date|date:"Y/m/d" }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="submit" class="btn btn-primary">留年させる</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# 留年取消の確認モーダル #}
+  <div class="modal fade" id="cancelExtendModal" tabindex="-1" aria-labelledby="cancelExtendModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form method="post" action="{% url 'manager:user_cancel_extension' user_id=student.user_id %}" class="modal-content">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="cancelExtendModalLabel">留年取消</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          {{ student.student_name }} さんの留年を1年分取り消します。よろしいですか？
+          <div class="small text-body-secondary mt-2">
+            現在の卒業日：{{ student.graduation_date|date:"Y/m/d" }}（留年{{ student.graduation_extension }}年）
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="submit" class="btn btn-primary">取り消す</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {# 無効化の確認モーダル #}
+  <div class="modal fade" id="deactivateModal" tabindex="-1" aria-labelledby="deactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form method="post" action="{% url 'manager:user_deactivate' user_id=student.user_id %}" class="modal-content">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="deactivateModalLabel">ユーザーを無効化</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          {{ student.student_name }} さんのアカウントを無効化します。よろしいですか？
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="submit" class="btn btn-danger">無効化する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</main>
+{% endblock content %}

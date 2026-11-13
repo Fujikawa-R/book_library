@@ -616,14 +616,93 @@ def book_lost(request, isbn):
 @admin_required
 @require_POST
 def user_deactivate(request, user_id):
-    # TODO: 手動の無効化
+    """手動の無効化。User.is_active を False にする（論理削除）。"""
+    student = get_object_or_404(Student.objects.select_related("user"), user_id=user_id)
+    user = student.user
+
+    if not user.is_active:
+        messages.info(request, f"{student.student_name} さんはすでに無効化されています。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+
+    lending = student.rentals.filter(return_date__isnull=True, is_lost=False).count()
+    if lending:
+        messages.warning(
+            request,
+            f"{student.student_name} さんを無効化しました。未返却の本が {lending} 冊あります。",
+        )
+    else:
+        messages.success(request, f"{student.student_name} さんを無効化しました。")
     return redirect("manager:user_detail", user_id=user_id)
 
 
 @admin_required
 @require_POST
 def user_extend_graduation(request, user_id):
-    # TODO: 卒業年の延長
+    """留年。卒業年の延長を1年増やす（無効化されるのも1年後ろにずれる）。"""
+    student = get_object_or_404(
+        Student.objects.select_related("user", "department"), user_id=user_id
+    )
+
+    if not student.user.is_active:
+        messages.error(request, "無効化されたユーザーは留年させられません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    # 同時に押されても取りこぼさないよう DB 側で加算する
+    Student.objects.filter(pk=student.pk).update(
+        graduation_extension=F("graduation_extension") + 1
+    )
+    student.refresh_from_db(fields=["graduation_extension"])
+
+    messages.success(
+        request,
+        f"{student.student_name} さんを留年にしました。"
+        f"卒業日は {student.graduation_date:%Y/%m/%d} になります。",
+    )
+    return redirect("manager:user_detail", user_id=user_id)
+
+
+@admin_required
+@require_POST
+def user_cancel_extension(request, user_id):
+    """留年取消。卒業年の延長を1年減らす（0未満にはしない）。"""
+    student = get_object_or_404(
+        Student.objects.select_related("user", "department"), user_id=user_id
+    )
+
+    if not student.user.is_active:
+        messages.error(request, "無効化されたユーザーの留年は取り消せません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    if student.graduation_extension <= 0:
+        messages.error(request, f"{student.student_name} さんは留年していません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    # 取り消すと卒業日が過ぎてしまう場合は止める（翌日に無効化されるべき状態になるため）
+    new_graduation = student.graduation_date.replace(year=student.graduation_date.year - 1)
+    if new_graduation < timezone.localdate():
+        messages.error(
+            request,
+            f"取り消すと卒業日（{new_graduation:%Y/%m/%d}）が過ぎてしまうため取り消せません。",
+        )
+        return redirect("manager:user_detail", user_id=user_id)
+
+    # 0未満にならないよう条件付きで DB 側で減算する
+    updated = Student.objects.filter(pk=student.pk, graduation_extension__gt=0).update(
+        graduation_extension=F("graduation_extension") - 1
+    )
+    if not updated:
+        messages.error(request, f"{student.student_name} さんは留年していません。")
+        return redirect("manager:user_detail", user_id=user_id)
+
+    student.refresh_from_db(fields=["graduation_extension"])
+    messages.success(
+        request,
+        f"{student.student_name} さんの留年を取り消しました。"
+        f"卒業日は {student.graduation_date:%Y/%m/%d} になります。",
+    )
     return redirect("manager:user_detail", user_id=user_id)
 
 
