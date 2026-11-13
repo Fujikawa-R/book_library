@@ -12,11 +12,16 @@
 <main class="setting-page">
     <div class="setting-container">
 
-        <!-- 学籍番号 -->
+        <!-- 学籍番号（管理者は「管理者」と表示） -->
         <div class="student-header">
             <div>
+                {% if student %}
                 <p class="student-label">学籍番号</p>
                 <h1 id="student-id">{{ student.student_no }}</h1>
+                {% else %}
+                <p class="student-label">アカウント種別</p>
+                <h1>管理者</h1>
+                {% endif %}
             </div>
             <div class="student-icon">👤</div>
         </div>
@@ -32,17 +37,19 @@
         <form method="post" id="setting-form" class="setting-form">
             {% csrf_token %}
 
+            {% if student %}
             <!-- 名前 -->
             <div class="form-group">
                 <label for="student_name">名前</label>
                 <input type="text" id="student_name" name="student_name" value="{{ student.student_name }}"
                     autocomplete="name" maxlength="50" readonly required>
             </div>
+            {% endif %}
 
             <!-- メールアドレス -->
             <div class="form-group">
                 <label for="email">メールアドレス</label>
-                <input type="email" id="email" name="email" value="{{ student.user.email }}" autocomplete="email" readonly
+                <input type="email" id="email" name="email" value="{{ request.user.email }}" autocomplete="email" readonly
                     required>
             </div>
 
@@ -113,6 +120,7 @@
                 </div>
             </div>
 
+            {% if student %}
             <!-- 学科 -->
             <div class="form-group">
                 <label for="department">学科</label>
@@ -125,6 +133,7 @@
                     {% endfor %}
                 </select>
             </div>
+            {% endif %}
 
             <!-- 操作ボタン -->
             <div class="setting-actions">
@@ -198,11 +207,9 @@
         }
 
         // サーバー（DB）から表示された値を「保存済み」として扱う
-        const savedData = {
-            studentName: studentName.value,
-            email: email.value,
-            department: department.value
-        };
+        // 名前・学科は生徒のときだけ存在する（管理者は null）
+        const editableFields = [studentName, email, department].filter(Boolean);
+        const savedData = new Map(editableFields.map(field => [field, field.value]));
 
         // パスワード欄を初期状態に戻す
         function resetPasswordFields() {
@@ -220,18 +227,18 @@
 
         // 保存済みデータに戻す
         function restoreSavedData() {
-            studentName.value = savedData.studentName;
-            email.value = savedData.email;
-            department.value = savedData.department;
+            editableFields.forEach(field => {
+                field.value = savedData.get(field);
+            });
 
             resetPasswordFields();
         }
 
         // 閲覧・編集モード切り替え
         function setEditMode(editing) {
-            studentName.readOnly = !editing;
+            studentName && (studentName.readOnly = !editing);
             email.readOnly = !editing;
-            department.disabled = !editing;
+            department && (department.disabled = !editing);
 
             passwordDisplay.hidden = editing;
             passwordEdit.hidden = !editing;
@@ -308,7 +315,7 @@
             }
 
             // 送信直前に disabled を外さないと学科が POST されない
-            department.disabled = false;
+            if (department) department.disabled = false;
             passwordInputs.forEach(input => { input.disabled = false; });
             form.submit();
         });
