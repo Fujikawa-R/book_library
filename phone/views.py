@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model, login, update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User
 from library.models import Book, Rental, Review, Tag
@@ -60,6 +61,15 @@ def mypage(request):
         "past_rentals": past_rentals,
     })
 
+def check_student_name(name):
+    """名前の入力チェック。問題があればエラーメッセージ、なければ None。"""
+    if not name:
+        return "名前を入力してください。"
+    if len(name) > Student._meta.get_field("student_name").max_length:
+        return "名前は50文字以内で入力してください。"
+    return None
+
+
 @login_required
 def setting(request):
     student = get_object_or_404(
@@ -70,10 +80,11 @@ def setting(request):
     departments = Department.objects.filter(is_active=True)
 
     error = None
-    success = None
+    success = "設定を保存しました。" if request.GET.get("saved") else None
 
     if request.method == "POST":
         email = request.POST.get("email", "").strip().lower()
+        student_name = request.POST.get("student_name", "").strip()
         department_id = request.POST.get("department", "")
 
         current_password = request.POST.get("current_password", "")
@@ -85,8 +96,22 @@ def setting(request):
             is_active=True
         ).first() if department_id.isdigit() else None
 
-        if not email:
-            error = "メールアドレスを入力してください。"
+        try:
+            email = normalize_student_email(email)
+            email_error = None
+        except ValidationError as e:
+            email_error = e.messages[0]
+
+        name_error = check_student_name(student_name)
+
+        if name_error:
+            error = name_error
+
+        elif email_error:
+            error = email_error
+
+        elif email_enrollment_year_suffix(email) != str(student.enrollment_year)[-2:]:
+            error = "メールアドレスの入学年が登録済みの入学年と一致しません。"
 
         elif User.objects.filter(email__iexact=email).exclude(
             pk=request.user.pk
@@ -122,13 +147,14 @@ def setting(request):
 
                     request.user.save()
 
+                    student.student_name = student_name
                     student.department = department
-                    student.save(update_fields=["department"])
+                    student.save(update_fields=["student_name", "department"])
 
                 if new_password:
                     update_session_auth_hash(request, request.user)
 
-                return redirect("phone:setting")
+                return redirect(f"{reverse('phone:setting')}?saved=1")
 
             except Exception:
                 error = "保存に失敗しました。もう一度お試しください。"
@@ -314,19 +340,29 @@ def signup(request):
     errors = []
     email = ""
     student_id = ""
+    student_name = ""
     selected_department = ""
     admission_year = ""
 
     if request.method == "POST":
         email = request.POST.get("email", "").strip().lower()
         student_id = request.POST.get("student_id", "").strip()
+        student_name = request.POST.get("student_name", "").strip()
         selected_department = request.POST.get("department", "")
         admission_year = request.POST.get("admission_year", "").strip()
         password1 = request.POST.get("password1", "")
         password2 = request.POST.get("password2", "")
 
+        # メールアドレスの形式・ドメイン確認
+        email_ok = False
+        try:
+            email = normalize_student_email(email)
+            email_ok = True
+        except ValidationError as e:
+            errors.extend(e.messages)
+
         # メールアドレスの重複確認
-        if User.objects.filter(email = email).exists():
+        if email_ok and User.objects.filter(email__iexact=email).exists():
             errors.append("このメールアドレスは既に登録されています。")
 
         # 学籍番号の重複確認
@@ -356,22 +392,19 @@ def signup(request):
             errors.append("入学年を入力して下さい。")
 
         # メールアドレスと入学年の一致確認
-        if year is not None and "@" in email:
-            local_part = email.split("@")[0]
-
-            email_year = local_part[-2:]
-            admission_year_short = str(year)[-2:]
-
-            if email_year != admission_year_short:
+        if year is not None and email_ok:
+            if email_enrollment_year_suffix(email) != str(year)[-2:]:
                 errors.append(
                     "メールアドレスの入学年と入力された入学年が一致しません"
                 )
 
-        if not email:
-            errors.append("メールアドレスを入力して下さい。")
-
         if not student_id:
             errors.append("学籍番号を入力してください。")
+
+        # 名前の確認
+        name_error = check_student_name(student_name)
+        if name_error:
+            errors.append(name_error)
 
         #登録
         if not errors:
@@ -385,7 +418,7 @@ def signup(request):
                 Student.objects.create(
                     user = user,
                     student_no = student_id,
-                    student_name = student_id, # 仮登録
+                    student_name = student_name,
                     department = department,
                     enrollment_year = year
                 )
@@ -400,6 +433,7 @@ def signup(request):
         "errors":errors,
         "email": email,
         "student_id": student_id,
+        "student_name": student_name,
         "selected_department": selected_department,
         "admission_year": admission_year,
         "departments": departments,

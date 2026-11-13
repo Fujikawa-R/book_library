@@ -58,12 +58,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="student_name">名前</label>
+                    <label for="id_student_name">名前</label>
                     <input
                         type="text"
-                        id="id_student_id"
+                        id="id_student_name"
                         name="student_name"
                         placeholder="名前を入力"
+                        maxlength="50"
+                        autocomplete="name"
                         value="{{ student_name }}"
                         required
                     >
