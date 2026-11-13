@@ -117,6 +117,13 @@
     border-top: 1px solid #e2e8f0;
 }
 
+/* 文字サイズが違う3要素を揃えるため、行の高さを文字サイズぴったりにする */
+.book-rating > span {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
 .rating-label {
     font-size: 15px;
     font-weight: 700;
@@ -393,6 +400,139 @@
     border: 1px solid #fecaca;
     background-color: white;
     color: #dc2626;
+}
+
+/* タグ表示 */
+.review-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.review-tags li {
+    padding: 3px 10px;
+    background-color: #eff6ff;
+    border-radius: 999px;
+    color: #2563eb;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* タグ選択（チェックボックスをチップ風に表示） */
+.tag-input {
+    --collapsed-height: 66px; /* 折りたたみ時はチップ約2行分 */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    position: relative;
+}
+
+/* 長いタグ一覧を折りたたみ、下端をフェードさせる */
+.tag-input.is-collapsed {
+    max-height: var(--collapsed-height);
+    overflow: hidden;
+}
+
+.tag-input.is-collapsed::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 24px;
+    background: linear-gradient(rgba(255, 255, 255, 0), #fff);
+    pointer-events: none;
+}
+
+.tag-chip[hidden] {
+    display: none;
+}
+
+.tag-chip {
+    display: inline-flex;
+}
+
+/* タグ検索欄 */
+.tag-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background-color: #f8fafc;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.tag-search-input:focus {
+    outline: 2px solid #93c5fd;
+    border-color: #2563eb;
+    background-color: white;
+}
+
+.tag-search-empty {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+.tag-search-empty[hidden],
+.tag-toggle-btn[hidden] {
+    display: none;
+}
+
+.tag-toggle-btn {
+    align-self: flex-start;
+    padding: 2px 0;
+    border: none;
+    background: none;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tag-input input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.tag-input label {
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    background-color: white;
+    color: #475569;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.tag-input input:checked + label {
+    border-color: #2563eb;
+    background-color: #2563eb;
+    color: white;
+}
+
+.tag-input input:focus-visible + label {
+    outline: 2px solid #93c5fd;
+}
+
+.new-tag-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.new-tag-input:focus {
+    outline: 2px solid #93c5fd;
+    border-color: #2563eb;
 }
 
 /* 小さいスマホ */

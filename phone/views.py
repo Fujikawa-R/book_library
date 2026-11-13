@@ -1,3 +1,5 @@
+import re
+
 from django.http import Http404
 from django.shortcuts import redirect, render, get_object_or_404
 from django.db.models import Q, Avg
@@ -9,16 +11,55 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User
-from library.models import Book, Rental, Review
-from accounts.models import Student, Department
-from accounts.validators import normalize_student_email, email_enrollment_year_suffix
+from library.models import Book, Rental, Review, Tag
+from accounts.models import Student, Department, TransactionQR
+
+import qrcode
+import qrcode.image.svg
 
 
 # TODO: 実装が進んだら、ログイン必須（@login_required）と処理を追加する
 
 
+def make_qr_svg(data):
+    """文字列をQRコードのSVG文字列にする（テンプレートにそのまま埋め込む用）。"""
+    img = qrcode.make(data, image_factory=qrcode.image.svg.SvgPathImage, box_size=10, border=2)
+    return img.to_string(encoding="unicode")
+
+
+@login_required
 def mypage(request):
-    return render(request, "phone/mypage.html")
+    student = get_object_or_404(Student.objects.select_related("user"), user=request.user)
+    today = timezone.localdate()
+
+    # 取引用QRは1日1つ。今日の分がなければ作る
+    transaction_qr, _ = TransactionQR.objects.get_or_create(student=student, created_on=today)
+    # TODO: QRに入れる中身は検討中。今は「日付:トークン」。
+    #       トークンはDB上で生徒に紐づいているので、読み取り側は token で TransactionQR を引けば生徒を特定できる
+    qr_data = f"{transaction_qr.created_on:%Y%m%d}:{transaction_qr.token}"
+
+    rentals = student.rentals.select_related("book").order_by("-checkout_date")
+    current_rentals = list(rentals.filter(return_date__isnull=True, is_lost=False))
+    past_rentals = rentals.filter(return_date__isnull=False)
+
+    # 返却期限までの残り日数（マイナスなら延滞）
+    for rental in current_rentals:
+        rental.days_left = (rental.due_date - today).days
+        rental.overdue_days = -rental.days_left
+        # カードの色分け: 期限切れ・当日=赤、2週間以内=黄、それ以外=primary(青)
+        if rental.days_left <= 0:
+            rental.level = "is-danger"
+        elif rental.days_left <= 14:
+            rental.level = "is-warning"
+        else:
+            rental.level = ""
+
+    return render(request, "phone/mypage.html", {
+        "student": student,
+        "qr_svg": make_qr_svg(qr_data),
+        "current_rentals": current_rentals,
+        "past_rentals": past_rentals,
+    })
 
 def check_student_name(name):
     """名前の入力チェック。問題があればエラーメッセージ、なければ None。"""
@@ -171,6 +212,10 @@ def book_search(request):
         "sort": sort,
     })
 
+REVIEW_TAG_LIMIT = 5  # 1件の口コミに付けられるタグの上限
+TAG_NAME_MAX_LENGTH = Tag._meta.get_field("name").max_length
+
+
 @login_required
 def book_detail(request, isbn):
     """図書詳細。自分の口コミの投稿・編集・削除もこの画面で行う（POST）。"""
@@ -199,6 +244,11 @@ def book_detail(request, isbn):
     error = None
     form_point = my_review.point if my_review and my_review.is_active else ""
     form_comment = my_review.comment if my_review and my_review.is_active else ""
+    form_tag_ids = (
+        [str(pk) for pk in my_review.tags.values_list("pk", flat=True)]
+        if my_review and my_review.is_active else []
+    )
+    form_new_tags = ""
 
     if request.method == "POST":
         if author is None:
@@ -215,23 +265,42 @@ def book_detail(request, isbn):
             comment = request.POST.get("comment", "").strip()
             form_point, form_comment = point, comment
 
+            # タグ：既存タグはチェックボックス、新しいタグは「,」「、」や空白区切りで入力
+            form_tag_ids = [t for t in request.POST.getlist("tags") if t.isdigit()]
+            form_new_tags = request.POST.get("new_tags", "").strip()
+            selected_tags = list(Tag.objects.filter(pk__in=form_tag_ids))
+            new_tag_names = list(dict.fromkeys(
+                name for name in re.split(r"[,、，\s]+", form_new_tags) if name
+            ))
+            tag_count = len({t.name for t in selected_tags} | set(new_tag_names))
+
             if not point.isdigit() or not 1 <= int(point) <= 5:
                 error = "評価点を1〜5で選択してください。"
             elif len(comment) > 1000:
                 error = "コメントは1000文字以内で入力してください。"
+            elif any(len(name) > TAG_NAME_MAX_LENGTH for name in new_tag_names):
+                error = f"タグは1つ{TAG_NAME_MAX_LENGTH}文字以内で入力してください。"
+            elif tag_count > REVIEW_TAG_LIMIT:
+                error = f"タグは{REVIEW_TAG_LIMIT}個まで付けられます。"
             else:
-                if my_review is None:
-                    my_review = Review(book=book, **author)
-                my_review.point = int(point)
-                my_review.comment = comment
-                my_review.is_active = True
-                my_review.save()
+                with transaction.atomic():
+                    if my_review is None:
+                        my_review = Review(book=book, **author)
+                    my_review.point = int(point)
+                    my_review.comment = comment
+                    my_review.is_active = True
+                    my_review.save()
+
+                    for name in new_tag_names:
+                        tag, _ = Tag.objects.get_or_create(name=name)
+                        selected_tags.append(tag)
+                    my_review.tags.set(selected_tags)
                 return redirect("phone:book_detail", isbn=book.isbn)
 
     reviews = Review.objects.filter(
         book=book,
         is_active=True
-    ).select_related("student__department").order_by("-updated_at")
+    ).select_related("student__department").prefetch_related("tags").order_by("-updated_at")
 
     book.rating = reviews.aggregate(
         average=Avg("point")
@@ -258,6 +327,10 @@ def book_detail(request, isbn):
         'form_point': str(form_point),
         'form_comment': form_comment,
         'point_choices': ["5", "4", "3", "2", "1"],
+        'tag_choices': Tag.objects.order_by("name"),
+        'form_tag_ids': form_tag_ids,
+        'form_new_tags': form_new_tags,
+        'review_tag_limit': REVIEW_TAG_LIMIT,
     })
 
 def signup(request):
