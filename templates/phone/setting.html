@@ -23,6 +23,12 @@
 
         <h2 class="setting-title">アカウント設定</h2>
 
+        {% if error %}
+        <div class="form-message is-error" role="alert">{{ error }}</div>
+        {% elif success %}
+        <div class="form-message is-success" role="status">{{ success }}</div>
+        {% endif %}
+
         <form method="post" id="setting-form" class="setting-form">
             {% csrf_token %}
 

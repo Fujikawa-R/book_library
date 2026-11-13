@@ -1,5 +1,4 @@
 import re
-
 from django.http import Http404
 from django.shortcuts import redirect, render, get_object_or_404
 from django.db.models import Q, Avg
@@ -13,6 +12,7 @@ from django.utils import timezone
 from accounts.models import User
 from library.models import Book, Rental, Review, Tag
 from accounts.models import Student, Department, TransactionQR
+from accounts.validators import normalize_school_email, normalize_student_email, email_enrollment_year_suffix
 
 import qrcode
 import qrcode.image.svg
@@ -72,15 +72,19 @@ def check_student_name(name):
 
 @login_required
 def setting(request):
-    student = get_object_or_404(
-        Student.objects.select_related("user", "department"),
-        user=request.user
-    )
+    # 生徒は Student を持つ。管理者は持たないので、メールとパスワードだけ変更できる
+    student = Student.objects.select_related("user", "department").filter(user=request.user).first()
+    is_admin = request.user.role == User.Role.ADMIN or request.user.is_superuser
+    if student is None and not is_admin:
+        raise Http404("この画面は生徒・管理者のみ利用できます。")
 
     departments = Department.objects.filter(is_active=True)
 
     error = None
-    success = "設定を保存しました。" if request.GET.get("saved") else None
+    success = {
+        "1": "設定を保存しました。",
+        "password": "パスワードを変更しました。",
+    }.get(request.GET.get("saved"))
 
     if request.method == "POST":
         email = request.POST.get("email", "").strip().lower()
@@ -96,13 +100,27 @@ def setting(request):
             is_active=True
         ).first() if department_id.isdigit() else None
 
-        try:
-            email = normalize_student_email(email)
-            email_error = None
-        except ValidationError as e:
-            email_error = e.messages[0]
+        # メールアドレスを変更したときだけ形式をチェックする
+        # （チェック導入前に登録したアカウントでも、名前やパスワードは変更できるように）
+        email_changed = email != request.user.email.lower()
+        email_error = None
+        if email_changed and student is None:
+            # 管理者：学校ドメインかどうかだけチェック
+            try:
+                email = normalize_school_email(email)
+            except ValidationError as e:
+                email_error = e.messages[0]
+        elif email_changed:
+            try:
+                email = normalize_student_email(email)
+            except ValidationError as e:
+                email_error = e.messages[0]
+            else:
+                if email_enrollment_year_suffix(email) != str(student.enrollment_year)[-2:]:
+                    email_error = "メールアドレスの入学年が登録済みの入学年と一致しません。"
 
-        name_error = check_student_name(student_name)
+        # 名前・学科は生徒のときだけ
+        name_error = check_student_name(student_name) if student else None
 
         if name_error:
             error = name_error
@@ -110,15 +128,12 @@ def setting(request):
         elif email_error:
             error = email_error
 
-        elif email_enrollment_year_suffix(email) != str(student.enrollment_year)[-2:]:
-            error = "メールアドレスの入学年が登録済みの入学年と一致しません。"
-
         elif User.objects.filter(email__iexact=email).exclude(
             pk=request.user.pk
         ).exists():
             error = "このメールアドレスは既に使用されています。"
 
-        elif department is None:
+        elif student is not None and department is None:
             error = "正しい学科を選択してください。"
 
         elif current_password or new_password or confirm_password:
@@ -147,14 +162,16 @@ def setting(request):
 
                     request.user.save()
 
-                    student.student_name = student_name
-                    student.department = department
-                    student.save(update_fields=["student_name", "department"])
+                    if student is not None:
+                        student.student_name = student_name
+                        student.department = department
+                        student.save(update_fields=["student_name", "department"])
 
                 if new_password:
                     update_session_auth_hash(request, request.user)
 
-                return redirect(f"{reverse('phone:setting')}?saved=1")
+                saved = "password" if new_password else "1"
+                return redirect(f"{reverse('phone:setting')}?saved={saved}")
 
             except Exception:
                 error = "保存に失敗しました。もう一度お試しください。"
