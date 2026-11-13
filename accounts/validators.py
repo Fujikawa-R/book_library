@@ -15,8 +15,8 @@ STUDENT_LOCAL_PART_RE = re.compile(
 )
 
 
-def normalize_student_email(email):
-    """生徒のメールアドレスを検証し、小文字にして返す。問題があれば ValidationError。"""
+def normalize_school_email(email):
+    """学校ドメインのメールアドレスか検証し、小文字にして返す（管理者用。形式は問わない）。"""
     email = (email or "").strip().lower()
     if not email:
         raise ValidationError("メールアドレスを入力してください。")
@@ -26,9 +26,17 @@ def normalize_student_email(email):
     except ValidationError:
         raise ValidationError("メールアドレスの形式が正しくありません。")
 
-    local_part, domain = email.rsplit("@", 1)
+    domain = email.rsplit("@", 1)[1]
     if domain not in settings.ALLOWED_EMAIL_DOMAINS:
         raise ValidationError("学校のメールアドレスを入力してください。")
+
+    return email
+
+
+def normalize_student_email(email):
+    """生徒のメールアドレスを検証し、小文字にして返す。問題があれば ValidationError。"""
+    email = normalize_school_email(email)
+    local_part = email.rsplit("@", 1)[0]
 
     if not STUDENT_LOCAL_PART_RE.match(local_part):
         raise ValidationError(

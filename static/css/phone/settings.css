@@ -289,6 +289,27 @@
     display: none !important;
 }
 
+/* 保存結果のメッセージ（消えずに残る） */
+.form-message {
+    margin: 0 0 20px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.form-message.is-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.form-message.is-success {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+}
+
 /* トースト */
 .toast {
     position: fixed;
